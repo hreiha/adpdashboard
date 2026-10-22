@@ -1,0 +1,113 @@
+name: refresh
+
+# Pulls Employment Hero, rebuilds data.json (P&C dashboard) and team.json
+# (Bids & IT dashboard), and commits both. Vercel redeploys on the push.
+
+on:
+  schedule:
+    # 20:00 UTC is 6am Brisbane. GitHub runs cron in UTC and does not observe
+    # daylight saving, so this drifts by an hour for the southern states in summer.
+    # Brisbane does not observe it either, so the 6am here is stable year round.
+    - cron: "0 20 * * *"
+
+  # The Recruitment Forecast flow commits recruitment.json, and the dashboard figures
+  # should pick that up straight away rather than waiting for the next morning.
+  push:
+    branches: [main]
+    paths:
+      - "recruitment.json"
+      - "paygap.json"
+
+  # Actions tab, Run workflow. Use this after changing a secret or a mapping.
+  workflow_dispatch:
+
+# The job commits back to the repo, so the token needs write access.
+permissions:
+  contents: write
+
+# A manual run while the schedule is firing would otherwise race for the same push.
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          # Full history, so the reset-and-reapply in the commit step has something
+          # to reset onto.
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Pull from Employment Hero and rebuild the figures
+        env:
+          EH_CLIENT_ID: ${{ secrets.EH_CLIENT_ID }}
+          EH_CLIENT_SECRET: ${{ secrets.EH_CLIENT_SECRET }}
+          EH_REFRESH_TOKEN: ${{ secrets.EH_REFRESH_TOKEN }}
+          EH_ORG_ID_AU: ${{ secrets.EH_ORG_ID_AU }}
+          EH_ORG_ID_UK: ${{ secrets.EH_ORG_ID_UK }}
+          # A repository VARIABLE, not a secret. Settings -> Secrets and variables ->
+          # Actions -> Variables. Set to true to write starter and leaver names into
+          # data.json. Only do that while the dashboard password is on.
+          INCLUDE_NAMES: ${{ vars.INCLUDE_NAMES }}
+        run: node scripts/refresh.mjs
+
+      - name: Commit if the figures changed
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Hold the generated files outside the working tree, because the reset below
+          # wipes the working tree.
+          STAGE="$(mktemp -d)"
+          cp data.json team.json "$STAGE/"
+
+          # Reset and reapply rather than rebase or merge. The Recruitment Forecast flow
+          # commits recruitment.json on its own schedule and can land between this job
+          # starting and finishing, and a rebase onto its commit hits a conflict in
+          # data.json that nobody is here to resolve.
+          #
+          # A hard reset onto origin/main, then copying the two generated files back on
+          # top, is always the right answer: both are build output, so whatever this run
+          # produced wins for those two files and nothing else in the repo is touched.
+          #
+          # The retry covers the narrow case where a commit lands between the fetch and
+          # the push.
+          for attempt in 1 2 3; do
+            git fetch --quiet origin main
+            git reset --quiet --hard origin/main
+
+            cp "$STAGE/data.json" "$STAGE/team.json" .
+
+            if git diff --quiet -- data.json team.json; then
+              echo "No change in the figures, nothing to commit."
+              exit 0
+            fi
+
+            git add data.json team.json
+            git commit -q -m "Dashboard refresh $(date -u '+%Y-%m-%d %H:%M UTC')"
+
+            # Show what is actually going in, so a stray file is obvious in the log
+            git show --stat --oneline HEAD | head -5
+
+            if git push --quiet origin HEAD:main; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+
+            echo "Push rejected, another commit landed first. Retrying."
+            sleep 5
+          done
+
+          echo "Could not push after 3 attempts."
+          exit 1
