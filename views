@@ -1,0 +1,1359 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>People &amp; Culture Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue: #0000D0;
+    --pink: #FF3184;
+    --orange: #FF6D2E;
+    --aqua: #43D8C9;
+    --lightblue: #06CDFF;
+    --purple: #AB76FF;
+    --ink: #101024;
+    --muted: #5A5A76;
+    --rule: #E2E2EE;
+    --paper: #FFFFFF;
+    --wash: #F6F6FB;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--wash);
+    color: var(--ink);
+    font-family: Archivo, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sample-banner {
+    background: var(--orange);
+    color: #fff;
+    padding: 10px 24px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .band {
+    background: var(--blue);
+    color: #fff;
+    padding: 28px 24px 24px;
+  }
+
+  .band-inner, .sheet {
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+
+  .band h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  .band .meta {
+    margin-top: 6px;
+    font-size: 13px;
+    color: #C9C9FF;
+  }
+
+  .sheet { padding: 0 24px 64px; }
+
+  section { margin-top: 36px; }
+
+  h2 {
+    margin: 0 0 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  /* Hero figure */
+  .hero {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    margin-top: -20px;
+    padding: 26px 28px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    gap: 32px;
+    align-items: center;
+  }
+
+  .hero .figure {
+    font-size: clamp(56px, 11vw, 84px);
+    font-weight: 700;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    color: var(--blue);
+  }
+
+  .hero .caption {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .spark { width: 100%; height: 96px; display: block; }
+
+  .spark-hit { cursor: pointer; }
+
+  .spark-caption {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    margin-top: 2px;
+  }
+
+  .split {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    gap: 28px;
+  }
+
+  .split-item { display: block; }
+
+  .split-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .split-label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+
+  .spark-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: -0.01em;
+  }
+
+  /* Metric rows */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(184px, 1fr));
+    background: var(--rule);
+    gap: 1px;
+    border: 1px solid var(--rule);
+  }
+
+  .metric {
+    background: var(--paper);
+    padding: 16px 18px 18px;
+  }
+
+  .metric .label {
+    font-size: 12.5px;
+    color: var(--muted);
+    min-height: 34px;
+  }
+
+  .metric .value {
+    margin-top: 6px;
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+
+  .delta {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    vertical-align: 6px;
+  }
+
+  .maintained {
+    width: 14px;
+    height: 3px;
+    background: var(--yellow);
+    vertical-align: 4px;
+    border-radius: 1px;
+  }
+
+  .good { color: var(--blue); }
+  .bad { color: var(--pink); }
+  .flat { color: var(--muted); }
+
+  .note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    max-width: 68ch;
+  }
+
+  /* Cost centre table */
+  table { width: 100%; border-collapse: collapse; background: var(--paper); }
+
+  th, td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 14px;
+  }
+
+  th {
+    background: var(--pink);
+    color: #fff;
+    font-weight: 600;
+    font-size: 12.5px;
+  }
+
+  td.num, th.num { text-align: right; }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  .bar-cell { width: 34%; }
+
+  .churn-track {
+    position: relative;
+    display: block;
+    height: 12px;
+    background: var(--wash);
+    width: 100%;
+  }
+
+  .churn-bar { display: block; height: 12px; min-width: 2px; }
+  .churn-bar.under { background: var(--blue); }
+  .churn-bar.over { background: var(--pink); }
+
+  .churn-marker {
+    position: absolute;
+    top: -3px;
+    width: 2px;
+    height: 18px;
+    background: var(--ink);
+  }
+
+  td.flag { color: var(--pink); font-weight: 600; }
+
+  .legend {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    gap: 18px;
+  }
+
+  .swatch {
+    display: inline-block;
+    width: 22px;
+    height: 8px;
+    margin-right: 6px;
+    vertical-align: 1px;
+  }
+
+  /* Pipeline */
+  .pipeline { background: var(--paper); border: 1px solid var(--rule); padding: 18px 20px; }
+
+  .stage {
+    display: grid;
+    grid-template-columns: 128px minmax(0, 1fr) 52px;
+    gap: 12px;
+    align-items: center;
+    padding: 7px 0;
+  }
+
+  .stage .name { font-size: 13.5px; }
+
+  .stage .track { background: var(--wash); height: 20px; }
+
+  .stage .fill { height: 20px; background: var(--purple); min-width: 2px; }
+
+  .stage:nth-child(1) .fill { background: var(--blue); }
+  .stage:nth-child(2) .fill { background: var(--lightblue); }
+  .stage:nth-child(3) .fill { background: var(--aqua); }
+  .stage:nth-child(4) .fill { background: var(--orange); }
+  .stage:nth-child(5) .fill { background: var(--pink); }
+  .stage:nth-child(n+6) .fill { background: var(--purple); }
+
+  .stage.alt:nth-child(odd) .fill { background: var(--blue); }
+  .stage.alt:nth-child(even) .fill { background: var(--lightblue); }
+
+  .stage .count { text-align: right; font-weight: 600; font-size: 14px; }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 14px;
+    padding: 16px 0 4px;
+  }
+
+  .options { right: 0; left: auto; }
+
+  @media (max-width: 640px) {
+    .filters { justify-content: flex-start; }
+    .options { left: 0; right: auto; }
+  }
+
+  .filter { display: block; }
+
+  .filter span {
+    display: block;
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .picker { position: relative; }
+
+  .picker > summary {
+    font-size: 13.5px;
+    padding: 7px 28px 7px 10px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    min-width: 190px;
+    cursor: pointer;
+    list-style: none;
+    position: relative;
+  }
+
+  .picker > summary::-webkit-details-marker { display: none; }
+
+  .picker > summary::after {
+    content: "";
+    position: absolute;
+    right: 11px;
+    top: 14px;
+    border: 4px solid transparent;
+    border-top-color: var(--muted);
+  }
+
+  .picker[open] > summary { outline: 2px solid var(--blue); outline-offset: -1px; }
+
+  .options {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 2px);
+    left: 0;
+    min-width: 100%;
+    max-height: 280px;
+    overflow-y: auto;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    box-shadow: 0 6px 18px rgba(16, 16, 36, 0.12);
+    padding: 4px 0;
+  }
+
+  .options label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 13.5px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .options label:hover { background: var(--wash); }
+
+  .options input { accent-color: var(--blue); margin: 0; }
+
+  .filter select {
+    font: inherit;
+    font-size: 13.5px;
+    padding: 7px 10px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .filter select:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+
+  .metric.drillable { cursor: pointer; }
+  .metric.drillable:hover { background: var(--wash); }
+
+  .metric.drillable .label::after {
+    content: " \2193";
+    color: var(--blue);
+    font-weight: 600;
+  }
+
+  .metric.drillable.open { outline: 2px solid var(--blue); outline-offset: -1px; }
+
+  .drill {
+    border: 1px solid var(--rule);
+    border-top: none;
+    background: var(--paper);
+    padding: 14px 18px 16px;
+  }
+
+  .drill h3 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .drill table { width: 100%; }
+  .drill th { background: var(--wash); color: var(--ink); }
+  .drill td, .drill th { padding: 6px 10px; font-size: 13px; }
+
+  .drill .empty { font-size: 13px; color: var(--muted); }
+
+  .filter-clear {
+    font: inherit;
+    font-size: 12.5px;
+    padding: 7px 12px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--blue);
+    cursor: pointer;
+  }
+
+  .scope {
+    display: inline-block;
+    margin-left: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #fff;
+    background: var(--blue);
+    padding: 2px 8px;
+    vertical-align: 3px;
+  }
+
+  .periods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1px;
+    margin-bottom: 14px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    width: fit-content;
+  }
+
+  .period {
+    font: inherit;
+    font-size: 12.5px;
+    padding: 7px 14px;
+    border: none;
+    background: var(--paper);
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .period:hover { color: var(--ink); }
+
+  .period.on {
+    background: var(--blue);
+    color: #fff;
+    font-weight: 500;
+  }
+
+  .foot {
+    margin-top: 40px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .error {
+    background: var(--paper);
+    border-left: 4px solid var(--orange);
+    padding: 16px 18px;
+    margin-top: 24px;
+  }
+
+  @media (max-width: 720px) {
+    .hero { grid-template-columns: 1fr; gap: 20px; }
+    .bar-cell { display: none; }
+    .stage { grid-template-columns: 96px minmax(0, 1fr) 44px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="band">
+  <div class="band-inner">
+    <h1>People &amp; Culture Dashboard</h1>
+    <div class="meta" id="meta">Loading figures</div>
+  </div>
+</div>
+
+<div class="sheet">
+  <div class="filters" id="filters" hidden>
+    <div class="filter">
+      <span>Location</span>
+      <details class="picker" id="pick-location">
+        <summary id="sum-location">All locations</summary>
+        <div class="options" id="opt-location"></div>
+      </details>
+    </div>
+    <div class="filter">
+      <span>Section</span>
+      <details class="picker" id="pick-costcentre">
+        <summary id="sum-costcentre">All sections</summary>
+        <div class="options" id="opt-costcentre"></div>
+      </details>
+    </div>
+    <div class="filter">
+      <span>Period</span>
+      <select id="filter-period"></select>
+    </div>
+    <div class="filter" id="range-from" hidden>
+      <span>From</span>
+      <select id="filter-from"></select>
+    </div>
+    <div class="filter" id="range-to" hidden>
+      <span>To</span>
+      <select id="filter-to"></select>
+    </div>
+    <button type="button" class="filter-clear" id="filter-clear" hidden>Clear</button>
+  </div>
+  <div id="root"></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const n = (v) => (v === null || v === undefined || v === "" ? "0" : Number(v).toLocaleString("en-AU"));
+
+// higherIsBetter: true  -> a rise is good (headcount, female representation)
+//                 false -> a rise is bad  (turnover, leavers, pay gap, days to hire)
+//                 null  -> neutral, show the movement without colouring it
+function delta(now, prior, suffix, higherIsBetter) {
+  const a = Number(now), b = Number(prior);
+  if (!isFinite(a) || !isFinite(b) || prior === null || prior === undefined || prior === "") return "";
+  const d = Math.round((a - b) * 10) / 10;
+  if (d === 0) return '<span class="delta maintained" title="Maintained"></span>';
+  const arrow = d > 0 ? "\u2191" : "\u2193";
+  let cls = "flat";
+  if (higherIsBetter === true) cls = d > 0 ? "good" : "bad";
+  if (higherIsBetter === false) cls = d > 0 ? "bad" : "good";
+  return '<span class="delta ' + cls + '">' + arrow + " " + Math.abs(d) + (suffix || "") + "</span>";
+}
+
+function tile(label, value, prior, unit, higherIsBetter, drillKey) {
+  const shown = value === null || value === undefined || value === "" ? "0" : value;
+  const drill = drillKey
+    ? ' data-drill="' + drillKey + '" class="metric drillable' + (DRILL === drillKey ? " open" : "") + '"'
+    : ' class="metric"';
+  return "<div" + drill + '><div class="label">' + label + "</div>" +
+    '<div class="value">' + shown + (unit || "") +
+    delta(value, prior, unit === "%" ? "pp" : "", higherIsBetter) + "</div></div>";
+}
+
+/** Rows behind a drillable tile, for whichever months and slices are selected. */
+/** Dates arrive as ISO from the API or dd/mm/yyyy from an export. Show them plainly. */
+function shortDate(value) {
+  const v = String(value || "").trim();
+  if (!v) return "";
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const dmy = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmy) return Number(dmy[1]) + " " + months[Number(dmy[2]) - 1] + " " + dmy[3];
+
+  const iso = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return Number(iso[3]) + " " + months[Number(iso[2]) - 1] + " " + iso[1];
+
+  return v;
+}
+
+function drillRows(d, key) {
+  const months = hasRange()
+    ? monthsInRange(d)
+    : selectedSlices(d).map(sl => sl.last30).filter(Boolean);
+
+  const rows = [];
+  for (const m of months) {
+    if (key === "hires") {
+      for (const x of m.hireNames || []) rows.push({ name: x.name, date: x.date, costCentre: x.costCentre, type: "" });
+    } else {
+      for (const x of m.leaverNames || []) {
+        if (key === "leavers-voluntary" && !x.voluntary) continue;
+        rows.push({ name: x.name, date: x.date, costCentre: x.costCentre, type: x.type });
+      }
+    }
+  }
+  return rows;
+}
+
+function drillPanel(d, key, heading) {
+  if (DRILL !== key) return "";
+  const rows = drillRows(d, key);
+
+  if (!(d.includesNames)) {
+    return '<div class="drill"><h3>' + heading + '</h3><p class="empty">' +
+      "Names are not published to this dashboard. Set the INCLUDE_NAMES repository variable " +
+      "to true and put the dashboard password back on before switching it on.</p></div>";
+  }
+  if (!rows.length) {
+    return '<div class="drill"><h3>' + heading + '</h3><p class="empty">Nobody in this selection.</p></div>';
+  }
+
+  return '<div class="drill"><h3>' + heading + " (" + rows.length + ")</h3>" +
+    "<table><thead><tr><th>Name</th><th>Cost centre</th><th>Date</th>" +
+    (key === "hires" ? "" : "<th>Reason</th>") + "</tr></thead><tbody>" +
+    rows.map(r => "<tr><td>" + r.name + "</td><td>" + (r.costCentre || "") + "</td><td>" +
+      shortDate(r.date) + "</td>" + (key === "hires" ? "" : "<td>" + (r.type || "") + "</td>") + "</tr>").join("") +
+    "</tbody></table></div>";
+}
+
+// The Stage choice list in its own order, so the chart reads as a process rather than
+// in whatever order the distinct values came back.
+const STAGE_ORDER = [
+  "needs approval", "new", "phone screen", "present to hm", "1st interview", "2nd interview",
+  "sourcing", "on hold", "references", "referee detail request sent", "references requested",
+  "km to get sc approval", "sc approval pending", "ja approved", "sc approved", "sc declined",
+  "offer pending", "contract sent", "accepted", "declined", "withdrawn"
+];
+
+// Outcomes rather than places in the pipeline, so they are left off the chart
+const STAGE_EXCLUDE = ["sc declined", "declined", "withdrawn"];
+
+function stageRank(name) {
+  const i = STAGE_ORDER.indexOf(String(name || "").toLowerCase().trim());
+  return i < 0 ? STAGE_ORDER.length : i;   // anything unrecognised sorts to the end
+}
+
+// Stage labels as we report them, where they differ from the list's wording
+const STAGE_LABELS = { "waiting for approval": "Role Requested" };
+
+// Role statuses left off the recruitment chart
+const PIPELINE_EXCLUDE = ["waiting for approval", "role withdrawn", "offered"];
+
+// The three reference steps are one stage for reporting
+const STAGE_MERGE = {
+  "referee detail request sent": "References",
+  "references requested": "References"
+};
+
+function mergeStage(raw) {
+  const clean = String(raw || "").replace(/^\s*\d+[.)]\s*/, "").trim();
+  return STAGE_MERGE[clean.toLowerCase()] || clean;
+}
+
+function stageLabel(raw) {
+  const clean = String(raw || "").replace(/^\s*\d+[.)]\s*/, "").trim();
+  return STAGE_LABELS[clean.toLowerCase()] || clean;
+}
+
+/** Finds a stage count by name, ignoring the "1. " prefix, case and the ampersand spacing. */
+function stageCount(pipeline, name) {
+  const norm = (v) => String(v || "")
+    .replace(/^\s*\d+[.)]\s*/, "")
+    .replace(/\s*&\s*/g, " and ")
+    .toLowerCase()
+    .trim();
+  const target = norm(name);
+  const hit = (pipeline || []).find(s => norm(s.stage) === target);
+  return hit ? hit.count : 0;
+}
+
+function sparkline(points) {
+  if (!points.length) return "";
+  const w = 560, h = 96, pad = 10;
+  const vals = points.map(p => Number(p.headcount));
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const span = max - min || 1;
+  const x = (i) => pad + (i * (w - pad * 2)) / Math.max(points.length - 1, 1);
+  const y = (v) => h - pad - ((v - min) / span) * (h - pad * 2);
+  const line = vals.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1)).join(" ");
+  const area = line + " L" + x(vals.length - 1).toFixed(1) + " " + h + " L" + x(0).toFixed(1) + " " + h + " Z";
+  const dots = vals.map((v, i) => {
+    const cx = x(i).toFixed(1);
+    const cy = y(v).toFixed(1);
+    const label = (points[i].month || "") + ": " + v;
+    // The wide transparent circle is the hit area; the small one is what you see
+    return '<circle class="spark-hit" cx="' + cx + '" cy="' + cy + '" r="14" fill="transparent" ' +
+      'data-label="' + label + '"><title>' + label + "</title></circle>" +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="3" fill="#0000D0" pointer-events="none"/>';
+  }).join("");
+  return '<svg class="spark" viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="none" role="img" aria-label="Headcount over the last twelve months">' +
+    '<path d="' + area + '" fill="#0000D0" opacity="0.07"/>' +
+    '<path d="' + line + '" fill="none" stroke="#0000D0" stroke-width="2.5" vector-effect="non-scaling-stroke"/>' +
+    dots + "</svg>";
+}
+
+let DATA = null;
+
+// Empty means no restriction, which is how "All" is expressed.
+const FILTER = { locations: [], costCentres: [], from: "", to: "" };
+let DRILL = null;   // which tile's list is open
+
+function hasRange() {
+  return !!(FILTER.from && FILTER.to && FILTER.from <= FILTER.to);
+}
+
+function isFiltered() {
+  return FILTER.locations.length > 0 || FILTER.costCentres.length > 0 || hasRange();
+}
+
+/** The slices matching the location and section ticks. */
+function selectedSlices(d) {
+  return (d.slices || []).filter(sl =>
+    (FILTER.locations.length === 0 || FILTER.locations.indexOf(sl.location) >= 0) &&
+    (FILTER.costCentres.length === 0 || FILTER.costCentres.indexOf(sl.costCentre) >= 0)
+  );
+}
+
+/** Month entries inside the chosen range, across the chosen slices. */
+function monthsInRange(d) {
+  if (!hasRange()) return [];
+  const out = [];
+  for (const sl of selectedSlices(d)) {
+    for (const m of sl.months || []) {
+      if (m.key >= FILTER.from && m.key <= FILTER.to) out.push(m);
+    }
+  }
+  return out;
+}
+
+/**
+ * Turnover over the chosen range. Leavers are summed, and the denominator is the mean of
+ * every month-end headcount inside it, which is the same method used everywhere else.
+ */
+function rangePeriod(d) {
+  const months = monthsInRange(d);
+  if (!months.length) return null;
+
+  const keys = [...new Set(months.map(m => m.key))].sort();
+  const leavers = months.reduce((a, m) => a + (Number(m.leavers) || 0), 0);
+  const vol = months.reduce((a, m) => a + (Number(m.leaversVoluntary) || 0), 0);
+  const avgHead = months.reduce((a, m) => a + (Number(m.headcountEnd) || 0), 0) / keys.length;
+  const total = pct(leavers, avgHead);
+  const voluntary = pct(vol, avgHead);
+  const fromLabel = (months.find(m => m.key === keys[0]) || {}).label || keys[0];
+  const toLabel = (months.find(m => m.key === keys[keys.length - 1]) || {}).label || keys[keys.length - 1];
+
+  return {
+    key: "range",
+    label: keys.length === 1 ? fromLabel : fromLabel + " to " + toLabel,
+    months: keys.length,
+    avgHeadcount: (Math.round(avgHead * 10) / 10).toFixed(1),
+    leavers: leavers,
+    leaversVoluntary: vol,
+    total: total,
+    voluntary: voluntary,
+    totalAnnualised: (Math.round(Number(total) * (12 / keys.length) * 10) / 10).toFixed(1),
+    voluntaryAnnualised: (Math.round(Number(voluntary) * (12 / keys.length) * 10) / 10).toFixed(1)
+  };
+}
+
+function pct(part, whole) {
+  if (!whole) return "0.0";
+  return (Math.round((part / whole) * 1000) / 10).toFixed(1);
+}
+
+/**
+ * Combines the precomputed slices for whatever is ticked. The slices are disjoint, so
+ * counts add and rates are summed leavers over summed average headcount, which is the
+ * same arithmetic the server does for the company figures.
+ */
+function aggregate(d) {
+  const slices = selectedSlices(d);
+
+  if (!slices.length) {
+    return { headcount: 0, headcountPrior: 0, femalePct: "0.0", femalePctPrior: "0.0",
+             hiresMonth: 0, hiresMonthPrior: 0, leaversMonth: 0, leaversMonthPrior: 0,
+             leaversVoluntaryMonth: 0, leaversVoluntaryMonthPrior: 0, avgHeadcountLtm: "0.0",
+             churnTotal: "0.0", churnVoluntary: "0.0", turnoverPeriods: [], headcountTrend: [] };
+  }
+
+  const sum = (key) => slices.reduce((a, sl) => a + (Number(sl[key]) || 0), 0);
+
+  const headcount = sum("headcount");
+  const headcountPrior = sum("headcountPrior");
+
+  // Periods keep their order and labels from the first slice
+  const periods = (slices[0].turnoverPeriods || []).map((template, i) => {
+    const leavers = slices.reduce((a, sl) => a + (Number(sl.turnoverPeriods[i]?.leavers) || 0), 0);
+    const vol = slices.reduce((a, sl) => a + (Number(sl.turnoverPeriods[i]?.leaversVoluntary) || 0), 0);
+    const avgHead = slices.reduce((a, sl) => a + (Number(sl.turnoverPeriods[i]?.avgHeadcountValue) || 0), 0);
+    const months = Number(template.months) || 12;
+    const total = pct(leavers, avgHead);
+    const voluntary = pct(vol, avgHead);
+    return {
+      key: template.key,
+      label: template.label,
+      months: months,
+      avgHeadcount: (Math.round(avgHead * 10) / 10).toFixed(1),
+      leavers: leavers,
+      leaversVoluntary: vol,
+      total: total,
+      voluntary: voluntary,
+      totalAnnualised: (Math.round(Number(total) * (12 / months) * 10) / 10).toFixed(1),
+      voluntaryAnnualised: (Math.round(Number(voluntary) * (12 / months) * 10) / 10).toFixed(1)
+    };
+  });
+
+  const trend = (slices[0].headcountTrend || []).map((point, i) => ({
+    month: point.month,
+    headcount: slices.reduce((a, sl) => a + (Number(sl.headcountTrend[i]?.headcount) || 0), 0)
+  }));
+
+  const ltm = periods[0] || { total: "0.0", voluntary: "0.0", avgHeadcount: "0.0" };
+  const range = rangePeriod(d);
+  if (range) periods.unshift(range);
+
+  const rangeMonths = monthsInRange(d);
+  const rangeTotals = rangeMonths.length ? {
+    hiresMonth: rangeMonths.reduce((a, m) => a + (Number(m.hires) || 0), 0),
+    leaversMonth: rangeMonths.reduce((a, m) => a + (Number(m.leavers) || 0), 0),
+    leaversVoluntaryMonth: rangeMonths.reduce((a, m) => a + (Number(m.leaversVoluntary) || 0), 0),
+    hiresMonthPrior: null,
+    leaversMonthPrior: null,
+    leaversVoluntaryMonthPrior: null
+  } : null;
+
+  return Object.assign({
+    headcount: headcount,
+    headcountPrior: headcountPrior,
+    female: sum("female"),
+    male: sum("male"),
+    genderNotRecorded: sum("genderNotRecorded"),
+    femalePct: pct(sum("female"), headcount),
+    femalePctPrior: pct(sum("femalePrior"), headcountPrior),
+    hiresMonth: sum("hiresMonth"),
+    hiresMonthPrior: sum("hiresMonthPrior"),
+    leaversMonth: sum("leaversMonth"),
+    leaversMonthPrior: sum("leaversMonthPrior"),
+    leaversVoluntaryMonth: sum("leaversVoluntaryMonth"),
+    leaversVoluntaryMonthPrior: sum("leaversVoluntaryMonthPrior"),
+    avgHeadcountLtm: ltm.avgHeadcount,
+    churnTotal: ltm.total,
+    churnVoluntary: ltm.voluntary,
+    turnoverPeriods: periods,
+    headcountTrend: trend
+  }, rangeTotals || {});
+}
+
+function summarise(values, singular, plural) {
+  if (!values.length) return "All " + plural;
+  if (values.length <= 2) return values.join(", ");
+  return values.length + " " + plural;
+}
+
+function scopeLabel() {
+  if (!isFiltered()) return "";
+  const parts = [];
+  if (FILTER.locations.length) parts.push(summarise(FILTER.locations, "location", "locations"));
+  if (FILTER.costCentres.length) parts.push(summarise(FILTER.costCentres, "section", "sections"));
+  if (hasRange()) {
+    const all = (DATA && DATA.filterOptions && DATA.filterOptions.months) || [];
+    const lbl = (k) => (all.find(m => m.key === k) || {}).label || k;
+    parts.push(FILTER.from === FILTER.to ? lbl(FILTER.from) : lbl(FILTER.from) + " to " + lbl(FILTER.to));
+  }
+  return '<span class="scope">' + parts.join(" \u00B7 ") + "</span>";
+}
+
+function render() {
+  const d = DATA || {};
+  const r = d.recruitment || {};
+  const slice = aggregate(d);
+  const p = slice;
+  const trend = slice.headcountTrend || d.headcountTrend || [];
+  const cc = (d.costCentres || []).filter(c => !FILTER.costCentres.length || FILTER.costCentres.indexOf(c.code) >= 0);
+  const pipe = (d.pipeline || []).filter(st =>
+    PIPELINE_EXCLUDE.indexOf(String(st.stage || "").replace(/^\s*\d+[.)]\s*/, "").trim().toLowerCase()) < 0);
+  const ent = d.entities || [];
+  const dq = d.dataQuality || {};
+  const periods = (slice.turnoverPeriods || []).length
+    ? slice.turnoverPeriods
+    : turnoverPeriods(d);
+  const maxHead = Math.max(1, ...cc.map(c => Number(c.headcount) || 0));
+  const maxStage = Math.max(1, ...pipe.map(s => Number(s.count) || 0));
+  const locs = (d.locations || []).filter(l => !FILTER.locations.length || FILTER.locations.indexOf(l.name) >= 0);
+  const detailMerged = new Map();
+  for (const st of d.stageDetail || []) {
+    const name = mergeStage(st.stage);
+    if (STAGE_EXCLUDE.indexOf(name.toLowerCase()) >= 0) continue;
+    detailMerged.set(name, (detailMerged.get(name) || 0) + (Number(st.count) || 0));
+  }
+  const detail = [...detailMerged.entries()]
+    .map(([stage, count]) => ({ stage, count }))
+    .sort((a, b) => stageRank(a.stage) - stageRank(b.stage) || String(a.stage).localeCompare(String(b.stage)));
+  const maxDetail = Math.max(1, ...detail.map(st => Number(st.count) || 0));
+  const companyChurn = Number(p.churnVoluntary) || 0;
+  const maxChurn = Math.max(1, companyChurn,
+    ...cc.map(c => Number(c.churnVoluntary) || 0),
+    ...locs.map(l => Number(l.churnVoluntary) || 0));
+
+  const stamp = d.generatedUtc
+    ? new Date(d.generatedUtc).toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" })
+    : "unknown";
+  if (d.sample === true) {
+    const warn = document.createElement("div");
+    warn.className = "sample-banner";
+    warn.textContent = "These are placeholder figures, not your data. Run the Refresh dashboard data " +
+      "workflow in GitHub Actions to replace them.";
+    document.body.insertBefore(warn, document.body.firstChild);
+  }
+
+  $("meta").textContent = (d.periodLabel || "Current period") +
+    (d.priorLabel ? " compared with " + d.priorLabel : "") + " \u00B7 refreshed " + stamp;
+
+  $("root").innerHTML = `
+    <div class="hero">
+      <div>
+        <div class="figure">${n(p.headcount)}</div>
+        <div class="caption">Active headcount ${delta(p.headcount, p.headcountPrior, "", true)} on last month</div>
+        <div class="split">
+          ${ent.map(e => `<span class="split-item">
+            <span class="split-value">${n(e.headcount)}</span>
+            <span class="split-label">${e.name || e.code}</span>
+          </span>`).join("")}
+        </div>
+      </div>
+      <div>
+        ${sparkline(trend)}
+        <div class="spark-labels">${trend.map(t => "<span>" + t.month + "</span>").join("")}</div>
+        <div class="spark-caption" id="spark-caption">Last twelve months</div>
+      </div>
+    </div>
+
+    <section>
+      <h2>${hasRange() ? "Selected period" : "Last 30 days"}${scopeLabel()}</h2>
+      <div class="metrics">
+        ${tile("New hires", p.hiresMonth, p.hiresMonthPrior, "", true, "hires")}
+        ${tile("Leavers (voluntary)", p.leaversVoluntaryMonth, p.leaversVoluntaryMonthPrior, "", false, "leavers-voluntary")}
+        ${tile("Leavers (total)", p.leaversMonth, p.leaversMonthPrior, "", false, "leavers")}
+        ${tile("Female representation", p.femalePct, p.femalePctPrior, "%", true)}
+        ${tile("Female headcount", p.female, null, "", null)}
+        ${tile("Male headcount", p.male, null, "", null)}
+      </div>
+      ${Number(p.genderNotRecorded) > 0
+        ? '<div class="note">' + n(p.genderNotRecorded) +
+          " active employees have no gender recorded, so they appear in headcount but in neither figure above.</div>"
+        : ""}
+      ${drillPanel(d, "hires", "New starters")}
+      ${drillPanel(d, "leavers-voluntary", "Voluntary leavers")}
+      ${drillPanel(d, "leavers", "Leavers")}
+    </section>
+
+    <section>
+      <h2>Turnover${scopeLabel()}</h2>
+      <div class="periods" id="periods">
+        ${periods.map((pr, i) => `<button type="button" class="period${i === 0 ? " on" : ""}" data-i="${i}">${pr.label}</button>`).join("")}
+      </div>
+      <div class="metrics" id="turnover"></div>
+      <div class="note" id="turnover-note"></div>
+    </section>
+
+    <section${isFiltered() ? ' style="display:none"' : ""}>
+      <h2>By entity</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Entity</th>
+            <th class="num">Headcount</th>
+            <th class="num">Female %</th>
+            <th class="num">New starters this month</th>
+            <th class="num">Leavers this month</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${ent.map(e => `<tr>
+            <td>${e.name || e.code}</td>
+            <td class="num">${n(e.headcount)}${delta(e.headcount, e.headcountPrior, "", true)}</td>
+            <td class="num">${e.femalePct || "0"}%</td>
+            <td class="num">${n(e.hiresMonth)}</td>
+            <td class="num">${n(e.leaversMonth)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </section>
+
+    <section${isFiltered() ? ' style="display:none"' : ""}>
+      <h2>Recruitment</h2>
+      <div class="metrics">
+        ${tile("Search &amp; Secure", stageCount(pipe, "Search & Secure"), null, "", null)}
+        ${tile("Search &amp; Prepare", stageCount(pipe, "Search & Prepare"), null, "", null)}
+        ${tile("Role On Hold", stageCount(pipe, "Role On Hold"), null, "", null)}
+        ${tile("Total active roles", stageCount(pipe, "Search & Secure") + stageCount(pipe, "Search & Prepare"), null, "", null)}
+      </div>
+      <div class="pipeline" style="margin-top:20px;${pipe.length ? "" : "display:none"}">
+        ${pipe.map(s => `
+          <div class="stage">
+            <div class="name">${stageLabel(s.stage)}</div>
+            <div class="track"><div class="fill" style="width:${((Number(s.count) || 0) / maxStage * 100).toFixed(1)}%"></div></div>
+            <div class="count">${n(s.count)}</div>
+          </div>`).join("")}
+      </div>
+    </section>
+
+    <section${detail.length ? "" : ' style="display:none"'}>
+      <h2>Roles by stage</h2>
+      <div class="pipeline">
+        ${detail.map(st => `
+          <div class="stage alt">
+            <div class="name">${st.stage}</div>
+            <div class="track"><div class="fill" style="width:${((Number(st.count) || 0) / maxDetail * 100).toFixed(1)}%"></div></div>
+            <div class="count">${n(st.count)}</div>
+          </div>`).join("")}
+      </div>
+      <div class="note">Where each role currently sits in the process, from the Stage column. A role
+      appears once, against its current stage.</div>
+    </section>
+
+    <section>
+      <h2>Location</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Location</th>
+            <th class="num">Headcount</th>
+            <th class="num">Female %</th>
+            <th class="num">Leavers LTM</th>
+            <th class="num">Vol turnover</th>
+            <th class="num">Total turnover</th>
+            <th class="num">Active roles</th>
+            <th class="bar-cell">Voluntary turnover against the company rate of ${p.churnVoluntary || "0"}%</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${locs.map(l => {
+            const hasRate = l.churnVoluntary !== null && l.churnVoluntary !== undefined;
+            const churn = hasRate ? Number(l.churnVoluntary) : 0;
+            const width = Math.min(churn / maxChurn * 100, 100);
+            const marker = Math.min(companyChurn / maxChurn * 100, 100);
+            const above = churn > companyChurn;
+            return `<tr>
+              <td>${l.name}</td>
+              <td class="num">${n(l.headcount)}</td>
+              <td class="num">${l.femalePct || "0"}%</td>
+              <td class="num">${n(l.leaversLtm)}</td>
+              <td class="num ${above && hasRate ? "flag" : ""}">${hasRate ? l.churnVoluntary + "%" : "&ndash;"}</td>
+              <td class="num">${hasRate ? l.churnTotal + "%" : "&ndash;"}</td>
+              <td class="num">${n(l.activeRoles)}</td>
+              <td class="bar-cell">
+                <span class="churn-track">
+                  ${hasRate ? `<span class="churn-bar ${above ? "over" : "under"}" style="width:${width.toFixed(1)}%"></span>` : ""}
+                  <span class="churn-marker" style="left:${marker.toFixed(1)}%"></span>
+                </span>
+              </td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+      <div class="note">Office location rather than reporting line, so a person in a national team
+      appears against the office they sit in.</div>
+    </section>
+
+    <section>
+      <h2>Cost centres</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Cost centre</th>
+            <th class="num">Headcount</th>
+            <th class="num">Female %</th>
+            <th class="num">Leavers LTM</th>
+            <th class="num">Vol turnover</th>
+            <th class="num">Total turnover</th>
+            <th class="num">Active roles</th>
+            <th class="bar-cell">Voluntary turnover against the company rate of ${p.churnVoluntary || "0"}%</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${cc.map(c => {
+            const hasRate = c.churnVoluntary !== null && c.churnVoluntary !== undefined;
+            const churn = hasRate ? Number(c.churnVoluntary) : 0;
+            const width = Math.min(churn / maxChurn * 100, 100);
+            const marker = Math.min(companyChurn / maxChurn * 100, 100);
+            const above = churn > companyChurn;
+            return `<tr>
+              <td>${c.code}</td>
+              <td class="num">${n(c.headcount)}</td>
+              <td class="num">${c.femalePct || "0"}%</td>
+              <td class="num">${n(c.leaversLtm)}</td>
+              <td class="num ${above && hasRate ? "flag" : ""}">${hasRate ? c.churnVoluntary + "%" : "&ndash;"}</td>
+              <td class="num">${hasRate ? c.churnTotal + "%" : "&ndash;"}</td>
+              <td class="num">${n(c.openRoles)}</td>
+              <td class="bar-cell">
+                <span class="churn-track">
+                  ${hasRate ? `<span class="churn-bar ${above ? "over" : "under"}" style="width:${width.toFixed(1)}%"></span>` : ""}
+                  <span class="churn-marker" style="left:${marker.toFixed(1)}%"></span>
+                </span>
+              </td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+      <div class="legend">
+        <span><span class="swatch" style="background:#0000D0"></span>At or below the company voluntary rate</span>
+        <span><span class="swatch" style="background:#FF3184"></span>Above it</span>
+        <span><span class="swatch" style="background:#101024;width:2px"></span>Company rate</span>
+      </div>
+
+    </section>
+
+`;
+
+  bindPeriods(periods);
+  bindDrill();
+  bindSpark();
+}
+
+/** Periods from the data, or a single rolling twelve month entry built from the headline
+ *  figures, so the Turnover section is never blank. */
+function turnoverPeriods(d) {
+  const given = d.turnoverPeriods || [];
+  if (given.length) return given;
+  const p = d.people || {};
+  return [{
+    key: "ltm",
+    label: "Rolling 12 months",
+    months: 12,
+    avgHeadcount: p.avgHeadcountLtm || "0",
+    leavers: 0,
+    leaversVoluntary: 0,
+    total: p.churnTotal || "0.0",
+    voluntary: p.churnVoluntary || "0.0",
+    totalAnnualised: p.churnTotal || "0.0",
+    voluntaryAnnualised: p.churnVoluntary || "0.0"
+  }];
+}
+
+function renderTurnover(periods, index) {
+  const pr = periods[index];
+  if (!pr) return;
+
+  $("turnover").innerHTML =
+    tile("Voluntary", pr.voluntary, null, "%", false) +
+    tile("Total", pr.total, null, "%", false) +
+    tile("Voluntary leavers", pr.leaversVoluntary, null, "", false) +
+    tile("Total leavers", pr.leavers, null, "", false) +
+    (pr.months !== 12
+      ? tile("Voluntary annualised", pr.voluntaryAnnualised, null, "%", false) +
+        tile("Total annualised", pr.totalAnnualised, null, "%", false)
+      : "");
+
+  $("turnover-note").innerHTML =
+    "Leavers in the period divided by average monthly headcount across the same period (" +
+    pr.avgHeadcount + " over " + pr.months + " month" + (pr.months === 1 ? "" : "s") +
+    "), taking headcount at each month end rather than averaging the opening and closing figures. " +
+    "Voluntary covers resignations and voluntary cessations.";
+
+  document.querySelectorAll(".period").forEach((b, i) => b.classList.toggle("on", i === index));
+}
+
+/** Wired after each render, since the buttons are rebuilt with the markup. */
+function bindSpark() {
+  const caption = $("spark-caption");
+  if (!caption) return;
+  const base = "Last twelve months";
+
+  document.querySelectorAll(".spark-hit").forEach(el => {
+    el.addEventListener("mouseenter", () => { caption.textContent = el.dataset.label; });
+    el.addEventListener("mouseleave", () => { caption.textContent = base; });
+    el.addEventListener("click", () => { caption.textContent = el.dataset.label; });
+  });
+}
+
+function bindDrill() {
+  document.querySelectorAll("[data-drill]").forEach(el => {
+    el.addEventListener("click", () => {
+      DRILL = DRILL === el.dataset.drill ? null : el.dataset.drill;
+      render();
+    });
+  });
+}
+
+function bindPeriods(periods) {
+  document.querySelectorAll(".period").forEach(btn => {
+    btn.addEventListener("click", () => renderTurnover(periods, Number(btn.dataset.i)));
+  });
+  renderTurnover(periods, 0);
+}
+
+function buildFilters(d) {
+  const opts = d.filterOptions || {};
+  const locations = opts.locations || [];
+  const centres = opts.costCentres || [];
+  if (!locations.length && !centres.length) return;
+
+  const picker = (optId, sumId, values, selected, noun, plural) => {
+    const box = $(optId);
+    box.innerHTML = values
+      .map(v => '<label><input type="checkbox" value="' + v + '"><span>' + v + "</span></label>")
+      .join("");
+
+    const refresh = () => {
+      $(sumId).textContent = summarise(selected, noun, plural);
+      const clear = $("filter-clear");
+      if (clear) clear.hidden = !isFiltered();
+      render();
+    };
+
+    box.addEventListener("change", (ev) => {
+      const t = ev.target;
+      if (!t || t.type !== "checkbox") return;
+      const i = selected.indexOf(t.value);
+      if (t.checked && i < 0) selected.push(t.value);
+      if (!t.checked && i >= 0) selected.splice(i, 1);
+      refresh();
+    });
+
+    return () => {
+      selected.length = 0;
+      box.querySelectorAll("input").forEach(el => { el.checked = false; });
+      $(sumId).textContent = summarise(selected, noun, plural);
+    };
+  };
+
+  const resetLoc = picker("opt-location", "sum-location", locations, FILTER.locations, "location", "locations");
+  const resetCc = picker("opt-costcentre", "sum-costcentre", centres, FILTER.costCentres, "section", "sections");
+
+  const months = opts.months || [];
+  const fromEl = $("filter-from");
+  const toEl = $("filter-to");
+  const periodEl = $("filter-period");
+
+  const keys = months.map(m => m.key);
+  const latest = keys[keys.length - 1] || "";
+
+  /** Presets in months back from the current one, plus the two to-date windows. */
+  const backFrom = (n) => keys[Math.max(0, keys.length - n)] || keys[0] || "";
+
+  const yearStart = () => {
+    const year = latest.slice(0, 4);
+    const jan = year + "-01";
+    return keys.indexOf(jan) >= 0 ? jan : keys[0] || "";
+  };
+
+  const fyStart = () => {
+    const year = Number(latest.slice(0, 4));
+    const month = Number(latest.slice(5, 7));
+    const july = (month >= 7 ? year : year - 1) + "-07";
+    return keys.indexOf(july) >= 0 ? july : keys[0] || "";
+  };
+
+  // The month before the current one, which is the last complete month
+  const lastFullMonth = () => keys[keys.length - 2] || keys[keys.length - 1] || "";
+
+  const PRESETS = [
+    { id: "", label: "All time", from: "", to: "" },
+    { id: "lastmonth", label: "Last full month", from: lastFullMonth, to: lastFullMonth },
+    { id: "thismonth", label: "This month so far", from: () => latest, to: () => latest },
+    { id: "m3", label: "Last 3 months", from: () => backFrom(3), to: () => latest },
+    { id: "m6", label: "Last 6 months", from: () => backFrom(6), to: () => latest },
+    { id: "m12", label: "Last 12 months", from: () => backFrom(12), to: () => latest },
+    { id: "fy", label: "This financial year", from: fyStart, to: () => latest },
+    { id: "cy", label: "This calendar year", from: yearStart, to: () => latest },
+    { id: "custom", label: "Custom range", from: null, to: null }
+  ];
+
+  periodEl.innerHTML = PRESETS
+    .map(pr => '<option value="' + pr.id + '">' + pr.label + "</option>")
+    .join("");
+
+  const monthOptions = (blank) =>
+    '<option value="">' + blank + "</option>" +
+    months.map(m => '<option value="' + m.key + '">' + m.label + "</option>").join("");
+
+  fromEl.innerHTML = monthOptions("Any");
+  toEl.innerHTML = monthOptions("Any");
+
+  const onRange = () => {
+    FILTER.from = fromEl.value;
+    FILTER.to = toEl.value;
+    // A backwards range is a typo, not a selection
+    if (FILTER.from && FILTER.to && FILTER.from > FILTER.to) {
+      FILTER.to = FILTER.from;
+      toEl.value = FILTER.from;
+    }
+    DRILL = null;
+    $("filter-clear").hidden = !isFiltered();
+    render();
+  };
+
+  fromEl.addEventListener("change", onRange);
+  toEl.addEventListener("change", onRange);
+
+  periodEl.addEventListener("change", () => {
+    const chosen = PRESETS.find(pr => pr.id === periodEl.value) || PRESETS[0];
+    const custom = chosen.id === "custom";
+
+    $("range-from").hidden = !custom;
+    $("range-to").hidden = !custom;
+
+    if (!custom) {
+      FILTER.from = typeof chosen.from === "function" ? chosen.from() : chosen.from;
+      FILTER.to = typeof chosen.to === "function" ? chosen.to() : chosen.to;
+      fromEl.value = FILTER.from;
+      toEl.value = FILTER.to;
+    }
+
+    DRILL = null;
+    $("filter-clear").hidden = !isFiltered();
+    render();
+  });
+
+  $("filter-clear").addEventListener("click", () => {
+    resetLoc();
+    resetCc();
+    FILTER.from = "";
+    FILTER.to = "";
+    fromEl.value = "";
+    toEl.value = "";
+    periodEl.value = "";
+    $("range-from").hidden = true;
+    $("range-to").hidden = true;
+    DRILL = null;
+    $("filter-clear").hidden = true;
+    render();
+  });
+
+  // Clicking away closes an open picker
+  document.addEventListener("click", (ev) => {
+    ["pick-location", "pick-costcentre"].forEach(id => {
+      const el = $(id);
+      if (el && el.open && ev.target && typeof el.contains === "function" && !el.contains(ev.target)) {
+        el.open = false;
+      }
+    });
+  });
+
+  $("filters").hidden = false;
+}
+
+fetch("data.json", { cache: "no-store" })
+  .then(res => {
+    if (!res.ok) throw new Error("data.json returned " + res.status);
+    return res.json();
+  })
+  .then(d => {
+    DATA = d;
+    buildFilters(d);
+    render();
+  })
+  .catch(err => {
+    $("meta").textContent = "Figures unavailable";
+    $("root").innerHTML =
+      '<div class="error"><strong>The dashboard could not load data.json.</strong>' +
+      "<p>Check that the scheduled workflow committed data.json to the repository and that " +
+      "Vercel finished deploying. Details: " + String(err.message) + "</p></div>";
+  });
+</script>
+</body>
+</html>
