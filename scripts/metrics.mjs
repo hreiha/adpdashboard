@@ -69,6 +69,24 @@ const NAT_REPORT_LOCALLY = ["NAT-STR"];
 // one leaver from a team of two reads as 50 per cent and tells you nothing.
 const MIN_HEADCOUNT_FOR_RATE = 3;
 
+// Where the turnover trend line starts. January 2023 is the earliest honest point:
+// Employment Hero was migrated into around late 2022, and every leaver record from
+// before that came across as a stub with no employment type, cost centre or start date.
+// Those stubs are dropped by the scoping above, so a line drawn through 2020 to 2022
+// would read as near zero turnover and then leap, which is an artefact and not history.
+const TREND_START_YEAR = 2023;
+const TREND_START_MONTH = 0;   // 0 = January
+
+// The company-wide trend line runs on a looser population than the rest of the dashboard.
+// A turnover rate for the whole business needs only a start date and a termination date,
+// so this one ignores location, cost centre and employment type, which is what keeps the
+// migrated records out of everything else.
+//
+// A start date is still required. Without one a record cannot be placed in time at all,
+// and the active-at test would read it as employed since the beginning of the series,
+// which would inflate early headcount and push the rate towards zero.
+const HISTORY_START_YEAR = 2012;
+
 // Cost centre values that mean "not set". Normalised to Unassigned.
 const UNASSIGNED_COST_CENTRES = ["adp consulting pty ltd", "adp consulting", "n/a", "-"];
 
@@ -345,9 +363,11 @@ export function scopeEmployees(raw) {
       terminationReason: e.terminationReason,
       level4: e.level4,
       costCentre: centre,
-      // Carried for the team dashboard. Absent on older records, which is handled there.
+      // Carried for the ADP Dashboard. Absent on older records, which is handled there.
       jobTitle: e.jobTitle || "",
       birthDate: e.birthDate || "",
+      positionGrade: e.positionGrade || "",
+      discipline: e.discipline || "",
       independentContractor: e.independentContractor === true,
       rehire: e.rehire === true ? true : (e.rehire === false ? false : null),
       status: e.status,
@@ -751,6 +771,112 @@ export function computeMetrics(employees, asOfIso, options) {
     });
   }
 
+  /**
+   * Month ends from TREND_START to the last COMPLETE month. The current part month is
+   * left off, so every point on the trend line covers whole months and the line does not
+   * dip at the right hand end simply because the month is young.
+   */
+  const trendEnds = [];
+  {
+    let y = TREND_START_YEAR;
+    let m = TREND_START_MONTH;
+    for (let i = 0; i < 600; i++) {
+      const end = monthEnd(y, m);
+      if (end > asOf) break;
+      trendEnds.push(end);
+      m += 1;
+      if (m > 11) { m = 0; y += 1; }
+    }
+  }
+
+  /**
+   * Per month: closing headcount, leavers, voluntary leavers. Deliberately raw counts
+   * rather than rates, because the dashboard combines slices when filters are applied
+   * and rates cannot be added. Short keys because this ships to the browser for every
+   * location and cost centre combination.
+   */
+  function seriesOver(ends, pool) {
+    return ends.map(end => {
+      const from = monthEnd(end.getUTCFullYear(), end.getUTCMonth() - 1);
+      const leavers = leaversBetween(from, end, pool);
+      return {
+        k: monthKey(end),
+        label: monthLabel(end),
+        h: pool.filter(e => activeAt(e, end)).length,
+        l: leavers.length,
+        v: leavers.filter(e => isVoluntary(e.terminationReason)).length
+      };
+    });
+  }
+
+  function turnoverSeriesFor(pool) {
+    return trendEnds.map(end => {
+      const from = monthEnd(end.getUTCFullYear(), end.getUTCMonth() - 1);
+      const leavers = leaversBetween(from, end, pool);
+      return {
+        k: monthKey(end),
+        label: monthLabel(end),
+        h: pool.filter(e => activeAt(e, end)).length,
+        l: leavers.length,
+        v: leavers.filter(e => isVoluntary(e.terminationReason)).length
+      };
+    });
+  }
+
+  /**
+   * The company-wide history line. Deliberately not `scoped`: that drops anyone without an
+   * employment type or cost centre, which is every leaver migrated in from before the move
+   * to Employment Hero, and dropping them makes the numerator zero while the denominator
+   * is not, so the rate reads as a flat zero for those years.
+   *
+   * A start date is required, because an undated record counts as active from the start of
+   * the series and would inflate the denominator instead.
+   */
+  const historyPool = raw.filter(e => {
+    if (e.independentContractor === true) return false;
+    if (containsAny(e.employmentType, EXCLUDED_EMPLOYMENT_TYPES)) return false;
+    return parseDate(e.startDate) !== null;
+  });
+
+  const historyEnds = [];
+  {
+    let y = HISTORY_START_YEAR;
+    let m = 0;
+    for (let i = 0; i < 600; i++) {
+      const end = monthEnd(y, m);
+      if (end > asOf) break;
+      historyEnds.push(end);
+      m += 1;
+      if (m > 11) { m = 0; y += 1; }
+    }
+  }
+
+  /** How much of the history is usable, so the page and the run log can say so. */
+  const historyQuality = (function () {
+    const withStart = historyPool.length;
+    const leaversNoStart = raw.filter(e =>
+      parseDate(e.terminationDate) !== null && parseDate(e.startDate) === null).length;
+    // The first month where somebody actually left, since everything before that is a
+    // flat zero that says nothing
+    let firstLeaverKey = "";
+    let impossibleDates = 0;
+    for (const e of historyPool) {
+      const t = parseDate(e.terminationDate);
+      if (!t || isNonLeaver(e.terminationReason)) continue;
+      // Employment Hero holds a few terminations dated 1925, which are typos rather than
+      // departures. Anything before the series begins is ignored.
+      if (t.getUTCFullYear() < HISTORY_START_YEAR) { impossibleDates++; continue; }
+      const k = t.getUTCFullYear() + "-" + String(t.getUTCMonth() + 1).padStart(2, "0");
+      if (!firstLeaverKey || k < firstLeaverKey) firstLeaverKey = k;
+    }
+    return {
+      recordsWithStartDate: withStart,
+      leaversWithoutStartDate: leaversNoStart,
+      firstLeaverMonth: firstLeaverKey,
+      impossibleTerminationDates: impossibleDates
+    };
+  })();
+
   function sliceFor(pool) {
     const now = pool.filter(e => activeAt(e, thisMonthEnd));
     const prior = pool.filter(e => activeAt(e, priorMonthEnd));
@@ -785,6 +911,7 @@ export function computeMetrics(employees, asOfIso, options) {
         headcount: monthly[i]
       })),
       months: monthlySeries(pool),
+      turnoverSeries: turnoverSeriesFor(pool),
       last30: {
         hireNames: includeNames
           ? hires30.map(e => ({ name: personLabel(e), date: e.startDate, costCentre: e.costCentre }))
@@ -867,6 +994,11 @@ export function computeMetrics(employees, asOfIso, options) {
     },
     includesNames: includeNames,
     slices: slices,
+    // Company wide on the dashboard's own scope, the fallback shape for the chart
+    turnoverSeries: turnoverSeriesFor(scoped),
+    // Company wide on the looser history scope, which is what reaches back before 2023
+    turnoverHistory: seriesOver(historyEnds, historyPool),
+    historyQuality: historyQuality,
     costCentres: costCentres,
     locations: locations,
     headcountTrend: headcountTrend,

@@ -43,10 +43,13 @@ const FIELDS = {
   costCentre:        ["primary_cost_centre", "cost_centre", "teams"],
   rehire:            ["rehire_this_personnel", "rehire", "eligible_for_rehire", "re_hire"],
   name:              ["full_name", "known_as", "first_name"],
-  // Both are for the Bids and IT dashboard. Position grade and discipline are not
-  // Employment Hero fields; they are read out of the job title.
+  // For the ADP Dashboard. Employment Hero does carry Position Grade and Discipline as
+  // real fields, so they are read directly where present; the job title is only a
+  // fallback for records where they are blank.
   jobTitle:          ["job_title", "role", "title"],
-  birthDate:         ["date_of_birth", "dob", "birth_date"]
+  birthDate:         ["date_of_birth", "dob", "birth_date"],
+  positionGrade:     ["position_grade", "positionGrade", "grade", "level"],
+  discipline:        ["discipline", "sub_discipline", "practice"]
 };
 
 function required(name) {
@@ -170,6 +173,8 @@ function normalise({ raw, entity }) {
     costCentre: String(pick(raw, FIELDS.costCentre)),
     jobTitle: String(pick(raw, FIELDS.jobTitle)),
     birthDate: String(pick(raw, FIELDS.birthDate)),
+    positionGrade: String(pick(raw, FIELDS.positionGrade)),
+    discipline: String(pick(raw, FIELDS.discipline)),
     // Employment Hero carries an explicit flag, which beats matching employment type text
     independentContractor: raw.independent_contractor === true,
     // Drives the regrettable departure rate. Tri-state: true, false, or null when not recorded.
@@ -328,6 +333,9 @@ async function main() {
     filterOptions: metrics.filterOptions,
     includesNames: metrics.includesNames,
     slices: metrics.slices,
+    turnoverSeries: metrics.turnoverSeries,
+    turnoverHistory: metrics.turnoverHistory,
+    historyQuality: metrics.historyQuality,
     entities: metrics.entities,
     recruitment: recruitment?.recruitment ?? {
       openRoles: 0, filledMonth: 0, avgDaysOpen: "0.0", avgDaysToHire: "0.0"
@@ -341,6 +349,21 @@ async function main() {
   };
 
   writeFileSync(join(ROOT, "data.json"), JSON.stringify(output, null, 2) + "\n", "utf8");
+
+  // The trend line reaches back only as far as the records allow, so say how far that is
+  const hq = metrics.historyQuality || {};
+  const hist = metrics.turnoverHistory || [];
+  const firstWithLeavers = hist.find(pt => pt.l > 0);
+  console.log("");
+  console.log("Turnover history:");
+  console.log(`  ${hq.recordsWithStartDate} records carry a start date and can be placed in time`);
+  console.log(`  ${hq.leaversWithoutStartDate} leavers have no start date and are left out`);
+  console.log(`  earliest departure on a dated record: ${hq.firstLeaverMonth || "none"}`);
+  console.log(`  the line can begin 12 months after that, at ${firstWithLeavers ? firstWithLeavers.k : "n/a"}`);
+  if (hq.leaversWithoutStartDate > 0) {
+    console.log(`  Add a start date to those ${hq.leaversWithoutStartDate} records in Employment Hero ` +
+      "and the line reaches further back on the next run.");
+  }
 
   // ---- the Bids and IT dashboard, from the same pull
   //

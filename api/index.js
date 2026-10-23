@@ -38,11 +38,12 @@ function safeEqual(a, b) {
 /**
  * Each dashboard has its own credentials.
  *
- *   P&C dashboard at /          DASH_USER / DASH_PASS
- *   Bids and IT at /team        TEAM_USER / TEAM_PASS
+ *   ADP Dashboard at /          TEAM_USER / TEAM_PASS
+ *   P&C dashboard at /pc        DASH_USER / DASH_PASS
  *
- * The two are independent on purpose: the Bids and IT password can be handed out widely
- * without giving anyone the P&C page, which carries turnover, leaver names and pay.
+ * The two are independent on purpose: the ADP Dashboard password can be handed out
+ * widely without giving anyone the P&C page, which carries turnover, leaver names
+ * and pay. The ADP Dashboard itself shows no turnover at all.
  *
  * Trimmed, because a trailing space or newline pasted into the Vercel field is invisible
  * in the UI and would otherwise fail every sign in attempt.
@@ -70,9 +71,9 @@ function authorised(req, creds) {
 }
 
 /**
- * The team page accepts its own credentials or the P&C ones, so that whoever runs the
- * P&C dashboard does not need a second login to look at it. It does not work the other
- * way round: TEAM credentials never open the P&C dashboard.
+ * The ADP Dashboard accepts its own credentials or the P&C ones, so whoever runs the P&C
+ * dashboard does not need a second login. It does not work the other way round: TEAM
+ * credentials never open the P&C page.
  */
 function allowedFor(req, realm) {
   if (realm === "team") {
@@ -140,7 +141,9 @@ module.exports = (req, res) => {
     }));
   }
 
-  const isTeam = route === "/team" || route === "/team.json";
+  // The ADP Dashboard is the front page here. The P&C dashboard stays reachable at /pc
+  // for whoever holds the DASH password, and is not linked from anywhere.
+  const isTeam = route === "/" || route === "/team" || route === "/team.json";
   const realm = isTeam ? "team" : "dash";
   const auth = allowedFor(req, realm);
 
@@ -149,7 +152,7 @@ module.exports = (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Robots-Tag", "noindex, nofollow");
 
-  // ---- Bids and IT dashboard
+  // ---- ADP Dashboard, the front page
 
   if (route === "/team.json") {
     if (!teamData) {
@@ -163,7 +166,7 @@ module.exports = (req, res) => {
     return res.end(JSON.stringify(teamData));
   }
 
-  if (route === "/team") {
+  if (route === "/" || route === "/team") {
     if (!teamHtml) {
       res.statusCode = 500;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -173,11 +176,17 @@ module.exports = (req, res) => {
     return res.end(auth.enabled ? teamHtml : teamHtml.replace("<body>", "<body>" + OPEN_BANNER));
   }
 
-  // ---- P&C dashboard
+  // ---- P&C dashboard, kept at /pc
 
   if (route === "/data.json") {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     return res.end(JSON.stringify(data));
+  }
+
+  if (route !== "/pc") {
+    res.statusCode = 404;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return res.end("Not found.");
   }
 
   if (!html) {

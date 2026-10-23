@@ -119,11 +119,19 @@ function titleRight(jobTitle) {
 }
 
 /**
- * Position grade. Longest keyword that appears in the part before the pipe.
- * Returns "Not recorded" when the title is blank, "Other" when it is present but
- * matches nothing, so that a missing title and an unrecognised one stay distinguishable.
+ * Position grade.
+ *
+ * Employment Hero carries this as a real field, so a recorded value is used as it stands.
+ * Only where it is blank is the grade read out of the job title, by taking the longest
+ * keyword that appears before the pipe.
+ *
+ * Returns "Not recorded" when neither is available, and "Other" when a title is present
+ * but matches nothing, so a missing value and an unrecognised one stay distinguishable.
  */
-export function positionGrade(jobTitle) {
+export function positionGrade(jobTitle, recorded) {
+  const given = String(recorded || "").trim();
+  if (given) return given;
+
   const left = titleLeft(jobTitle);
   if (!left) return NOT_RECORDED;
 
@@ -136,8 +144,17 @@ export function positionGrade(jobTitle) {
   return best || "Other";
 }
 
-/** Discipline, from the part after the pipe, with the alias list applied. */
-export function discipline(jobTitle) {
+/**
+ * Discipline. The recorded Employment Hero field wins; the part of the job title after
+ * the pipe is the fallback. Either way the alias list is applied, so "Fire Protection"
+ * and "fire" land on the same row however they were entered.
+ */
+export function discipline(jobTitle, recorded) {
+  // Verbatim: Employment Hero is the system of record and already spells these
+  // consistently. Title casing here is what turned BIM into Bim and ICT/AV into Ict/av.
+  const given = String(recorded || "").trim();
+  if (given) return given;
+
   const right = titleRight(jobTitle);
   if (!right) return NOT_RECORDED;
 
@@ -186,8 +203,8 @@ export function computeTeamData(employees, asOfIso) {
     l: tidyLocation(e.location),        // office, state suffix removed
     c: e.costCentre || "Unassigned",    // already NAT-grouped and London-defaulted
     g: genderLabel(e.gender),
-    gr: positionGrade(e.jobTitle),
-    d: discipline(e.jobTitle),
+    gr: positionGrade(e.jobTitle, e.positionGrade),
+    d: discipline(e.jobTitle, e.discipline),
     s: dayOnly(e.startDate),
     t: dayOnly(e.terminationDate),
     b: birthYearMonth(e.birthDate),
@@ -245,9 +262,10 @@ export function computeTeamData(employees, asOfIso) {
   // be corrected rather than guessed at. Deduplicated and capped.
   const unmatched = [];
   for (const e of scoped) {
+    if (String(e.positionGrade || "").trim()) continue;   // recorded, nothing to derive
     const t = String(e.jobTitle || "").trim();
     if (!t) continue;
-    if (positionGrade(t) !== "Other") continue;
+    if (positionGrade(t, "") !== "Other") continue;
     if (unmatched.indexOf(t) < 0 && unmatched.length < 60) unmatched.push(t);
   }
 

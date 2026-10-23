@@ -4,10 +4,12 @@ Two dashboards fed by one scheduled pull from the Employment Hero API.
 
 | Path | Dashboard | Password |
 | --- | --- | --- |
-| `/` | People & Culture: headcount, turnover, recruitment, pay gap | `DASH_USER` / `DASH_PASS` |
-| `/team` | Bids & IT: headcount, age, tenure, breakdowns | `TEAM_USER` / `TEAM_PASS` |
+| `/` | **ADP Dashboard**: headcount, age, tenure, breakdowns. No turnover. | `TEAM_USER` / `TEAM_PASS` |
+| `/pc` | People & Culture: headcount, turnover, recruitment, pay gap | `DASH_USER` / `DASH_PASS` |
 
-The P&C credentials also open `/team`. The team credentials do not open `/`.
+The P&C credentials also open `/`. The ADP credentials never open `/pc` or `/data.json`,
+which is the point: the ADP Dashboard password can be handed out widely without exposing
+turnover, leaver names or pay. `/pc` is not linked from anywhere.
 
 ## How it works
 
@@ -38,8 +40,8 @@ Both dashboards decide who counts using the same `scopeEmployees` function in
 | `scripts/metrics.mjs` | scoping, headcount, turnover, pay gap, filter slices |
 | `scripts/team-metrics.mjs` | position grade and discipline, age, tenure |
 | `scripts/inspect.mjs` | one-off field inspection, run by hand when a field moves |
-| `views/index.html` | the P&C page |
-| `views/team.html` | the Bids & IT page |
+| `views/index.html` | the P&C page, served at `/pc` |
+| `views/team.html` | the ADP Dashboard, served at `/` |
 | `tools/Get-EmploymentHeroToken.ps1` | gets the refresh token, run locally |
 | `tools/Get-PayGap.ps1` | pay gap from a CSV export, run locally and commit `paygap.json` |
 | `data.json` | P&C figures, rewritten by each run |
@@ -59,5 +61,5 @@ Framework preset Other, no build command. Redeploy after changing any of them.
 
 `/healthz` reports whether each password pair is configured, without revealing values.
 
-See `TEAM-DASHBOARD.md` for the Bids & IT page and `RECRUITMENT-FLOW.md` for the
+See `ADP-DASHBOARD.md` for the ADP Dashboard and `RECRUITMENT-FLOW.md` for the
 Power Automate flow.
