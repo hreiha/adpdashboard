@@ -48,8 +48,10 @@ const FIELDS = {
   // fallback for records where they are blank.
   jobTitle:          ["job_title", "role", "title"],
   birthDate:         ["date_of_birth", "dob", "birth_date"],
-  positionGrade:     ["position_grade", "positionGrade", "grade", "level"],
-  discipline:        ["discipline", "sub_discipline", "practice"]
+  positionGrade:     ["position_grade", "positionGrade", "grade", "level", "position_level",
+                      "job_level", "classification"],
+  discipline:        ["discipline", "sub_discipline", "practice", "specialisation",
+                      "specialization", "service_line", "department"]
 };
 
 function required(name) {
@@ -124,10 +126,77 @@ async function refreshAccessToken(clientId, clientSecret, refreshToken) {
     console.warn(json.refresh_token);
   }
 
-  return json.access_token;
+  // The granted scopes decide whether the employee endpoint will answer at all, so they
+  // are carried out of here for the diagnostics below.
+  return { accessToken: json.access_token, scope: String(json.scope || "") };
 }
 
-async function fetchAllEmployees(accessToken, orgId, entity) {
+/**
+ * Which organisations this token can actually see, and under what scopes.
+ *
+ * Employment Hero answers an employee request with 424 and an empty body when the token
+ * is valid but cannot reach that organisation, which on its own says nothing useful.
+ * This turns that into something actionable: the real organisation IDs beside the ones
+ * configured, and whether the employee read scope was granted.
+ */
+async function explainAccessFailure(accessToken, scope, orgAu, orgUk) {
+  console.error("");
+  console.error("The token refreshed, so the client ID, secret and refresh token are all good.");
+  console.error("The employee endpoint refused the request, which is about access, not credentials.");
+  console.error("");
+
+  const wanted = "employees";
+  const granted = scope ? scope.split(/\s+/).filter(Boolean) : [];
+  const employeeScopes = granted.filter(s => s.indexOf(wanted) >= 0);
+
+  if (!scope) {
+    console.error("Employment Hero returned no scope list with the token.");
+  } else if (!employeeScopes.length) {
+    console.error("NO EMPLOYEE SCOPE WAS GRANTED. This is almost certainly the problem.");
+    console.error("In the Developer Portal, edit the app, tick the employee read scopes,");
+    console.error("then re-run tools/Get-EmploymentHeroToken.ps1 and update EH_REFRESH_TOKEN.");
+  } else {
+    console.error(`Employee scopes granted: ${employeeScopes.slice(0, 6).join(", ")}`);
+  }
+
+  console.error("");
+  try {
+    const res = await fetch(`${API_BASE}/organisations`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (!res.ok) {
+      console.error(`Listing organisations also failed with ${res.status}.`);
+      console.error("The token has no organisation access at all. Re-approve it as an");
+      console.error("Employment Hero owner or admin when you run the token script.");
+      return;
+    }
+    const json = await res.json();
+    const items = (json.data && json.data.items) || json.items || [];
+    if (!items.length) {
+      console.error("This token can see no organisations. Re-approve it as an owner or admin.");
+      return;
+    }
+
+    console.error("Organisations this token can see:");
+    const ids = [];
+    for (const o of items) {
+      console.error(`  ${o.id}  ${o.name || ""}`);
+      ids.push(String(o.id));
+    }
+    console.error("");
+    console.error("Configured:");
+    console.error(`  EH_ORG_ID_AU  ${orgAu}  ${ids.indexOf(orgAu) >= 0 ? "matches" : "NOT IN THE LIST ABOVE"}`);
+    console.error(`  EH_ORG_ID_UK  ${orgUk}  ${ids.indexOf(orgUk) >= 0 ? "matches" : "NOT IN THE LIST ABOVE"}`);
+    if (ids.indexOf(orgAu) < 0 || ids.indexOf(orgUk) < 0) {
+      console.error("");
+      console.error("Copy the IDs above into the EH_ORG_ID_AU and EH_ORG_ID_UK secrets.");
+    }
+  } catch (err) {
+    console.error(`Could not list organisations: ${err.message}`);
+  }
+}
+
+async function fetchAllEmployees(accessToken, orgId, entity, scope, orgAu, orgUk) {
   const collected = [];
   let page = 1;
   let totalPages = 1;
@@ -138,7 +207,9 @@ async function fetchAllEmployees(accessToken, orgId, entity) {
 
     if (!res.ok) {
       const text = await res.text();
-      console.error(`Employee fetch failed for ${entity} on page ${page} with ${res.status}: ${text}`);
+      console.error(`Employee fetch failed for ${entity} on page ${page} with ${res.status}` +
+        (text ? `: ${text}` : " and an empty body."));
+      await explainAccessFailure(accessToken, scope, orgAu, orgUk);
       process.exit(1);
     }
 
@@ -154,6 +225,13 @@ async function fetchAllEmployees(accessToken, orgId, entity) {
 
   console.log(`${entity}: ${collected.length} records across ${totalPages} page(s)`);
   return collected;
+}
+
+/** How many records carry a non-empty value under any of these candidate keys. */
+function employeesPreview(rawEmployees, candidates) {
+  let n = 0;
+  for (const e of rawEmployees) if (String(pick(e.raw, candidates) || "").trim()) n++;
+  return n;
 }
 
 function normalise({ raw, entity }) {
@@ -270,11 +348,11 @@ async function main() {
   const orgAu = required("EH_ORG_ID_AU");
   const orgUk = required("EH_ORG_ID_UK");
 
-  const accessToken = await refreshAccessToken(clientId, clientSecret, refreshToken);
+  const { accessToken, scope } = await refreshAccessToken(clientId, clientSecret, refreshToken);
 
   const rawEmployees = [
-    ...(await fetchAllEmployees(accessToken, orgAu, "AU")),
-    ...(await fetchAllEmployees(accessToken, orgUk, "UK"))
+    ...(await fetchAllEmployees(accessToken, orgAu, "AU", scope, orgAu, orgUk)),
+    ...(await fetchAllEmployees(accessToken, orgUk, "UK", scope, orgAu, orgUk))
   ];
 
   if (!rawEmployees.length) {
@@ -283,8 +361,33 @@ async function main() {
   }
 
   // Printed so the field names can be mapped without guessing. Keys only, never values.
+  const allKeys = Object.keys(rawEmployees[0].raw).sort();
   console.log("Available fields on the first record:");
-  console.log("  " + Object.keys(rawEmployees[0].raw).sort().join(", "));
+  console.log("  " + allKeys.join(", "));
+
+  // Position Grade and Discipline exist in the CSV report but are not in the v1 employee
+  // payload under any name tried so far. Anything that looks like them is surfaced here,
+  // including nested objects, so the mapping can be corrected rather than guessed.
+  const hints = allKeys.filter(k =>
+    /grade|discip|level|classif|special|practice|custom|field|service/i.test(k));
+  console.log("Field names that might carry Position Grade or Discipline:");
+  console.log("  " + (hints.length ? hints.join(", ") : "none"));
+
+  for (const k of hints) {
+    const v = rawEmployees[0].raw[k];
+    if (v && typeof v === "object") {
+      console.log(`  ${k} is an object with keys: ${Object.keys(v).join(", ")}`);
+    }
+  }
+
+  const gradeCount = employeesPreview(rawEmployees, FIELDS.positionGrade);
+  const discCount = employeesPreview(rawEmployees, FIELDS.discipline);
+  console.log(`Position Grade populated on ${gradeCount} of ${rawEmployees.length} records.`);
+  console.log(`Discipline populated on ${discCount} of ${rawEmployees.length} records.`);
+  if (gradeCount === 0 || discCount === 0) {
+    console.log("  One or both are empty, so those charts will read Not recorded.");
+    console.log("  Send the two field lists above to Claude and the mapping can be fixed.");
+  }
 
   const employees = rawEmployees.map(normalise);
 

@@ -261,7 +261,7 @@
 
   .row {
     display: grid;
-    grid-template-columns: 136px minmax(0, 1fr) 44px 48px;
+    grid-template-columns: 150px minmax(0, 1fr) 46px 42px 46px;
     gap: 10px;
     align-items: center;
     padding: 5px 0;
@@ -277,16 +277,33 @@
   .row .name.dim { color: var(--muted); font-style: italic; }
 
   .row .track { background: var(--wash); height: 18px; }
-  .row .fill { height: 18px; min-width: 2px; background: var(--blue); display: block; }
-  .row .count { text-align: right; font-weight: 600; font-size: 13.5px; }
-  .row .share { text-align: right; font-size: 12px; color: var(--muted); }
 
-  .row:nth-child(even) .fill { background: var(--lightblue); }
+  /* The bar's length is the row against the largest row; the segments inside it are
+     that row's own gender split, so both read off one line. */
+  .row .bar { display: flex; height: 18px; min-width: 2px; overflow: hidden; }
+  .row .seg { display: block; height: 18px; }
+  .row .seg.f { background: var(--pink); }
+  .row .seg.m { background: var(--blue); }
+  .row .seg.o { background: #C9C9DE; }
 
-  .panel.pink .fill { background: var(--pink); }
-  .panel.pink .row:nth-child(even) .fill { background: var(--purple); }
-  .panel.aqua .fill { background: var(--aqua); }
-  .panel.aqua .row:nth-child(even) .fill { background: var(--lightblue); }
+  .row .num { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .row .num.f { color: var(--pink); }
+  .row .num.m { color: var(--blue); }
+  .row .num.all { font-weight: 600; }
+
+  .row.head {
+    padding: 0 0 4px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 4px;
+  }
+
+  .row.head .num {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .row.head .num.all { color: var(--muted); }
 
   .empty { font-size: 13px; color: var(--muted); padding: 10px 0; }
 
@@ -466,11 +483,21 @@
     var counts = {};
     for (var i = 0; i < pool.length; i++) {
       var key = pool[i][field] || NOT_RECORDED;
-      counts[key] = (counts[key] || 0) + 1;
+      if (!counts[key]) counts[key] = { count: 0, female: 0, male: 0, other: 0 };
+      counts[key].count += 1;
+      if (pool[i].g === "Female") counts[key].female += 1;
+      else if (pool[i].g === "Male") counts[key].male += 1;
+      else counts[key].other += 1;
     }
 
     var rows = Object.keys(counts).map(function (k) {
-      return { name: k, count: counts[k] };
+      return {
+        name: k,
+        count: counts[k].count,
+        female: counts[k].female,
+        male: counts[k].male,
+        other: counts[k].other
+      };
     });
 
     rows.sort(function (a, b) {
@@ -481,6 +508,11 @@
     return rows;
   }
 
+  /**
+   * Each row is one bar split by gender, so the mix reads off the same line as the total.
+   * The bar length is the row's share of the largest row; the segments inside it are the
+   * female, male and unrecorded shares of that row.
+   */
   function renderBreakdown(title, rows, total, klass) {
     if (!rows.length) {
       return '<div class="panel"><h3>' + esc(title) + '</h3>' +
@@ -490,17 +522,35 @@
     var max = 0;
     for (var i = 0; i < rows.length; i++) max = Math.max(max, rows[i].count);
 
-    var html = '<div class="panel ' + (klass || "") + '"><h3>' + esc(title) + '</h3>';
+    var html = '<div class="panel ' + (klass || "") + '"><h3>' + esc(title) + '</h3>' +
+      '<div class="row head">' +
+        '<div class="name"></div><div></div>' +
+        '<div class="num f">Female</div>' +
+        '<div class="num m">Male</div>' +
+        '<div class="num all">All</div>' +
+      '</div>';
 
     for (var j = 0; j < rows.length; j++) {
       var r = rows[j];
       var width = max > 0 ? Math.max((r.count / max) * 100, 1) : 1;
       var dim = (r.name === NOT_RECORDED || r.name === "Other") ? " dim" : "";
-      html += '<div class="row">' +
-        '<div class="name' + dim + '" title="' + esc(r.name) + '">' + esc(r.name) + '</div>' +
-        '<div class="track"><span class="fill" style="width:' + width.toFixed(2) + '%"></span></div>' +
-        '<div class="count">' + r.count + '</div>' +
-        '<div class="share">' + pct(r.count, total) + '%</div>' +
+      var fPct = r.count ? (r.female / r.count) * 100 : 0;
+      var mPct = r.count ? (r.male / r.count) * 100 : 0;
+      var oPct = r.count ? (r.other / r.count) * 100 : 0;
+      var tip = r.name + ": " + r.female + " female, " + r.male + " male" +
+        (r.other ? ", " + r.other + " not recorded" : "") +
+        " \u00b7 " + pct(r.count, total) + "% of the selection";
+
+      html += '<div class="row" title="' + esc(tip) + '">' +
+        '<div class="name' + dim + '">' + esc(r.name) + '</div>' +
+        '<div class="track"><span class="bar" style="width:' + width.toFixed(2) + '%">' +
+          '<i class="seg f" style="width:' + fPct.toFixed(2) + '%"></i>' +
+          '<i class="seg m" style="width:' + mPct.toFixed(2) + '%"></i>' +
+          '<i class="seg o" style="width:' + oPct.toFixed(2) + '%"></i>' +
+        '</span></div>' +
+        '<div class="num f">' + r.female + '</div>' +
+        '<div class="num m">' + r.male + '</div>' +
+        '<div class="num all">' + r.count + '</div>' +
         '</div>';
     }
 
@@ -621,57 +671,18 @@
            female + " of " + active.length) +
       '</div>';
 
-    if (ages.length && ages.length < active.length) {
-      html += '<p class="note">Average age is drawn from the ' + ages.length +
-        ' people in this selection who have a date of birth in Employment Hero, not all ' +
-        active.length + '. Tenure runs from the recorded start date, so a rehire counts ' +
-        'from their most recent start rather than their original one.</p>';
-    }
-
     html += '</section>';
 
-    // Breakdowns, short lists side by side
-    html += '<section><h2>Headcount by location and gender</h2><div class="breakdowns">' +
+    // Breakdowns, every bar split by gender
+    html += '<section><h2>Headcount by location</h2><div class="breakdowns">' +
       renderBreakdown("Location", breakdown(active, "l"), active.length, "") +
-      renderBreakdown("Gender", breakdown(active, "g"), active.length, "pink") +
-      '</div>' +
-      '<p class="note">Location is the office a person sits in, not their reporting line, ' +
-      'so somebody in a national team appears against their own office.</p>' +
-      '</section>';
-
-    html += '<section><h2>Headcount by cost centre</h2><div class="breakdowns">' +
-      renderBreakdown("Cost centre", breakdown(active, "c"), active.length, "aqua") +
-      renderBreakdown("Position grade", breakdown(active, "gr"), active.length, "") +
-      '</div>' +
-      '<p class="note">NAT cost centres are combined across offices, so NAT-ESD covers every ' +
-      'location, and WA is reported within Melbourne. NAT-STR reports to its local office ' +
-      'rather than nationally.</p>' +
-      '</section>';
-
-    html += '<section><h2>Headcount by discipline</h2><div class="breakdowns">' +
-      renderBreakdown("Discipline", breakdown(active, "d"), active.length, "pink") +
+      renderBreakdown("Cost centre", breakdown(active, "c"), active.length, "") +
       '</div></section>';
 
-    // Source
-    var q = data.dataQuality || {};
-    html += '<div class="source">' +
-      'Position grade and discipline are not fields in Employment Hero. Both are read out of ' +
-      'the job title, which is written "Grade | Discipline". A person whose title does not ' +
-      'follow that pattern shows as Other or Not recorded rather than being guessed at. ' +
-      (data.coverage ? 'Across the people counted today, ' + esc(data.coverage.discipline) +
-        '% have a discipline in their title and ' + esc(data.coverage.birthDate) +
-        '% have a date of birth. ' : '') +
-      '<br><br>Source: Employment Hero, refreshed daily. Counted on the ' +
-      'same basis each month, so the figures are comparable over time. Excluded from headcount: ' +
-      (q.excludedBlankLocation || 0) + ' with no location, ' +
-      ((q.excludedWrongLocationAu || 0) + (q.excludedWrongLocationUk || 0)) +
-      ' recorded against the wrong entity, ' + (q.excludedContractors || 0) +
-      ' independent contractors, ' + (q.excludedNoCostCentre || 0) + ' with no cost centre, ' +
-      (q.excludedIncomplete || 0) + ' with no employment type. ' +
-      'Figures are aggregate only. Confidential to ADP Consulting.' +
-      (data.isSample ? '<br><br><strong>These are sample figures.</strong> They are replaced ' +
-        'the first time the scheduled refresh runs.' : '') +
-      '</div>';
+    html += '<section><h2>Headcount by grade and discipline</h2><div class="breakdowns">' +
+      renderBreakdown("Position grade", breakdown(active, "gr"), active.length, "") +
+      renderBreakdown("Discipline", breakdown(active, "d"), active.length, "") +
+      '</div></section>';
 
     el("app").className = "";
     el("app").innerHTML = html;
