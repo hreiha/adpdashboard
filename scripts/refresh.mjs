@@ -72,10 +72,12 @@ const FIELDS = {
   // fallback for records where they are blank.
   jobTitle:          ["job_title", "role", "title"],
   birthDate:         ["date_of_birth", "dob", "birth_date"],
-  positionGrade:     ["position_grade", "positionGrade", "grade", "level", "position_level",
-                      "job_level", "classification"],
-  discipline:        ["discipline", "sub_discipline", "practice", "specialisation",
-                      "specialization", "service_line", "department"]
+  // Both of these are CUSTOM fields in Employment Hero, filled in by applyCustomFields
+  // below rather than from the employee payload. Left empty on purpose: a loose guess
+  // like "grade" or "level" would match some unrelated standard field and put junk here
+  // on any record whose custom field request fails.
+  positionGrade:     [],
+  discipline:        []
 };
 
 function required(name) {
@@ -411,17 +413,22 @@ async function applyCustomFields(accessToken, orgId, entity, employees) {
   const defs = await fetchCustomFieldDefs(accessToken, orgId, entity);
   if (!defs.length) return;
 
-  // Which definition id corresponds to which record field
-  const wanted = new Map();
+  // Which definition corresponds to which record field. Both the id and the name are
+  // recorded, because the values endpoint may identify a field by either and this has
+  // not been seen against the live API yet.
+  const byId = new Map();
+  const byName = new Map();
   for (const [field, names] of Object.entries(CUSTOM_FIELDS)) {
     const def = defs.find(d =>
       names.indexOf(String(d.name || "").trim().toLowerCase()) >= 0);
     if (def) {
-      wanted.set(String(def.id), field);
+      if (def.id !== undefined && def.id !== null) byId.set(String(def.id), field);
+      byName.set(String(def.name || "").trim().toLowerCase(), field);
       console.log(`  ${entity}: "${def.name}" will fill ${field}`);
     }
   }
 
+  const wanted = byName;
   if (!wanted.size) {
     console.warn(`  ${entity}: none of the custom fields are named Discipline or ` +
       "Position Grade. Add the right name to CUSTOM_FIELDS in scripts/refresh.mjs.");
@@ -431,6 +438,7 @@ async function applyCustomFields(accessToken, orgId, entity, employees) {
   let filled = 0;
   let failed = 0;
   let index = 0;
+  let shapeLogged = false;
 
   async function worker() {
     while (index < employees.length) {
@@ -439,15 +447,28 @@ async function applyCustomFields(accessToken, orgId, entity, employees) {
       const res = await getJson(accessToken, `/organisations/${orgId}/employees/${e.id}/custom_fields`);
       if (!res.ok) { failed++; continue; }
 
+      const items = itemsOf(res.json);
+
+      // Printed once, so that if nothing lands the actual response shape is visible
+      // rather than having to be guessed at again.
+      if (!shapeLogged && items.length) {
+        shapeLogged = true;
+        console.log(`  ${entity}: a custom field value looks like ${JSON.stringify(items[0])}`);
+      }
+
       let any = false;
-      for (const item of itemsOf(res.json)) {
-        // The value sits under one of a few names depending on the field type
-        const field = wanted.get(String(item.custom_field_id ?? item.id ?? ""));
+      for (const item of items) {
+        // Identify the field by id where the response carries one, by name otherwise
+        const field = byId.get(String(item.custom_field_id ?? item.field_id ?? item.id ?? "")) ||
+          byName.get(String(item.name ?? item.field_name ?? item.custom_field_name ?? "")
+            .trim().toLowerCase());
         if (!field) continue;
-        let v = item.value ?? item.custom_field_value ?? item.name ?? "";
+
+        // The value sits under one of a few keys depending on the field type
+        let v = item.value ?? item.custom_field_value ?? item.field_value ?? item.text ?? "";
         if (v && typeof v === "object") v = v.name ?? v.value ?? v.label ?? "";
         v = String(v || "").trim();
-        if (v) { e[field] = v; any = true; }
+        if (v && v !== "-") { e[field] = v; any = true; }
       }
       if (any) filled++;
     }
