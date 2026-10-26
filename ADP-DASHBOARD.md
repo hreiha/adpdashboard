@@ -44,21 +44,50 @@ On the October 2026 export, against 295 people in scope:
 | | Resolved | Unknown |
 | --- | --- | --- |
 | Position grade | 99.7% | 1 |
-| Discipline | 95.9% | 12 |
+| Discipline | 100% | 0 |
 
-The 12 are *Engineering Assistant* (10, in offices with no discipline in the cost centre),
-*Engineering Intern* (2) and records with no job title at all. They show as **Unknown**
-rather than being guessed at, and Unknown always sorts to the bottom of a breakdown so it
-never reads as a real category.
+The single Unknown grade is *NSW Lead I Acoustics*: the left side of that title is a
+region, not a grade. Fixing the title in Employment Hero is the cleanest route.
 
-### The four non-engineering disciplines
+Nothing is currently Unknown on discipline, but the row still exists in the code and will
+reappear if a title arrives that matches nothing. When it does it sorts to the bottom of
+the breakdown, so it never reads as a real category.
+
+### The six non-engineering disciplines
 
 | Discipline | What is in it |
 | --- | --- |
 | **Corporate** | Finance, marketing and communications, IT, people & culture, talent, L&D |
 | **Bids** | Bid writers, bid managers, bids support |
 | **Business Support** | Business support, office coordinators, executive assistant, document controller, project administrators and coordinators, construction administration |
-| **Leadership** | Titles recording a region, sector or function instead of a discipline: a bare *Director*, the state Regional Leads, *Founding Director*, *Strategic Growth*, *Strategic Partnerships*, *Operations* |
+| **Intern** | Engineering assistants and engineering interns |
+| **Sector** | Leads named for a market rather than a discipline: Energy, Health & Life Sciences, Aviation, Retail |
+| **Leadership** | Titles recording a region or a function instead of a discipline: a bare *Director*, the state Regional Leads, *Founding Director*, *Strategic Growth*, *Strategic Partnerships*, *Operations* |
+
+**Intern is checked before everything else**, so an `Engineering Intern I Sustainability`
+counts as Intern rather than Sustainability. The intent is to see the whole intern cohort
+on one row whichever team they sit in. If they should instead count towards their team,
+delete the early `INTERN` check in `discipline()` and they will fall through to the normal
+right-then-left match.
+
+Note that a bare `assistant` is deliberately **not** an Intern alias. It would outrank
+`accounts` and put the Accounts Assistant in Intern instead of Corporate.
+
+### Grades folded together
+
+`GRADE_MERGE` in `team-metrics.mjs` folds these after the title is matched. They are
+judgement calls about which grades are the same level, not anything the data says, so
+changing one is a one-line edit in that list.
+
+| Matched from the title | Reported as |
+| --- | --- |
+| Manager, Senior Manager | Senior Associate |
+| Construction Administration | Senior Engineer |
+| Design Drafter | BIM Designer |
+| Document Controller | Coordinator |
+| Officer | Advisor |
+| Regional Director | Director |
+| Senior Designer | Senior BIM Designer |
 
 ### Two judgement calls worth knowing about
 

@@ -68,10 +68,14 @@ const DISCIPLINES = [
   ["Digital Innovation", ["digital innovation"]],
   ["Vertical Transportation", ["vertical transport"]],
   ["Specialist Lighting", ["specialist lighting", "lighting"]],
-  ["Energy", ["energy"]],
   ["CFD", ["cfd"]],
-  ["Health & Life Sciences", ["health", "healthcare", "life sciences", "laboratory"]],
   ["Major Projects", ["major projects", "projects"]],
+
+  // Sector leads, who are named for the market they serve rather than an engineering
+  // discipline. Health & Life Sciences and Energy were their own rows and are folded in
+  // here, along with the Aviation and Retail leads.
+  ["Sector", ["sector", "health", "healthcare", "life sciences", "laboratory",
+              "energy", "aviation", "retail", "defence", "education"]],
 
   // ---- non-engineering. Corporate is deliberately narrow: finance, marketing, IT and
   // people & culture only. Everything else that used to land there now has its own row.
@@ -89,6 +93,13 @@ const DISCIPLINES = [
 
   ["Bids", ["bid", "bids", "bid writer", "bid manager", "tender", "submissions"]],
 
+  // Engineering assistants and interns, reported as a cohort rather than left Unknown.
+  // "=intern" means the alias has to be a whole word, so it cannot match "international".
+  // A bare "assistant" is deliberately not an alias: it would outrank "accounts" and put
+  // the Accounts Assistant in here instead of Corporate.
+  ["Intern", ["engineering assistant", "engineering intern", "engineering trainee",
+              "=intern", "=interns"]],
+
   ["Business Support", ["business support", "office coordinator", "office manager",
                         "executive assistant", "document controller", "receptionist",
                         "administration assistant", "project administrator",
@@ -98,7 +109,7 @@ const DISCIPLINES = [
   // Leadership roles whose title records a region, sector or function rather than a
   // discipline: a bare Director, a Regional Lead, a Founding Director.
   ["Leadership", ["director", "founding director", "regional director",
-                  "managing director", "regional lead", "retail lead",
+                  "managing director", "regional lead",
                   "strategic growth", "strategic partnerships", "operations",
                   "head of people", "chief"]]
 ];
@@ -117,6 +128,23 @@ const CENTRE_DISCIPLINE = [
   ["nat-dig", "Digital Innovation"],
   ["nat-corp", "Corporate"]
 ];
+
+/**
+ * Grades folded into another grade, applied after the title has been matched.
+ *
+ * These are Hayley's calls about which grades are really the same level, not anything the
+ * data says, so they live in one list that can be changed without touching the matcher.
+ */
+const GRADE_MERGE = {
+  "Manager": "Senior Associate",
+  "Senior Manager": "Senior Associate",
+  "Construction Administration": "Senior Engineer",
+  "Design Drafter": "BIM Designer",
+  "Document Controller": "Coordinator",
+  "Officer": "Advisor",
+  "Regional Director": "Director",
+  "Senior Designer": "Senior BIM Designer"
+};
 
 const CORPORATE = "Corporate";
 
@@ -153,7 +181,7 @@ function centreDiscipline(costCentre) {
   return "";
 }
 
-/** Position grade from the part before the separator. */
+/** Position grade from the part before the separator, then folded per GRADE_MERGE. */
 export function positionGrade(jobTitle, costCentre) {
   const left = splitTitle(jobTitle).left;
   if (left) {
@@ -163,7 +191,7 @@ export function positionGrade(jobTitle, costCentre) {
       const needle = g.toLowerCase();
       if (hay.indexOf(needle) >= 0 && needle.length > best.length) best = g;
     }
-    if (best) return best;
+    if (best) return GRADE_MERGE[best] || best;
   }
   if (isCorporateCentre(costCentre)) return CORPORATE;
   return NOT_RECORDED;
@@ -181,14 +209,20 @@ export function positionGrade(jobTitle, costCentre) {
  * "acoustic" matches Acoustics and "vertical transport" matches Vertical Transportation
  * without needing every plural spelled out.
  */
+// Prefixing an alias with "=" forces the whole word rule on at any length, which is how
+// "intern" is kept out of "international".
 const ALIAS_TESTS = DISCIPLINES.map(entry => ({
   name: entry[0],
   tests: entry[1].map(alias => {
-    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const tail = alias.length <= 4 ? "([^a-z0-9]|$)" : "";
-    return { length: alias.length, re: new RegExp("(^|[^a-z0-9])" + escaped + tail) };
+    const exact = alias.charAt(0) === "=";
+    const word = exact ? alias.slice(1) : alias;
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const tail = (exact || word.length <= 4) ? "([^a-z0-9]|$)" : "";
+    return { length: word.length, re: new RegExp("(^|[^a-z0-9])" + escaped + tail) };
   })
 }));
+
+const INTERN = "Intern";
 
 function matchDiscipline(text) {
   const hay = String(text || "").toLowerCase();
@@ -215,6 +249,12 @@ function matchDiscipline(text) {
  */
 export function discipline(jobTitle, costCentre) {
   const parts = splitTitle(jobTitle);
+
+  // Engineering assistants and interns are reported as one cohort whichever team they sit
+  // in, so this runs ahead of the usual right-then-left match. Without it, an
+  // "Engineering Intern I Sustainability" would be counted as Sustainability.
+  if (matchDiscipline(parts.left) === INTERN) return INTERN;
+
   var d = matchDiscipline(parts.right);
   if (!d) d = matchDiscipline(parts.left);
   if (!d) d = centreDiscipline(costCentre);
