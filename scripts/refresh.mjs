@@ -46,6 +46,13 @@ const CUSTOM_FIELDS = {
 
 const CUSTOM_FIELD_CONCURRENCY = 4;
 
+// Off. Position Grade and Discipline are custom fields, and two attempts at reading them
+// through the custom field endpoints came back empty for every record. Both are now
+// derived from the job title in scripts/team-metrics.mjs instead. The code below is kept
+// because it works against a correct response, so if the endpoint starts returning values
+// this only needs turning back on.
+const USE_CUSTOM_FIELDS = false;
+
 // Custom fields are only needed for people the dashboard can still show. The trend goes
 // back twenty four months, so anyone who left well before that is skipped. On the October
 // run that avoided roughly a third of the requests.
@@ -556,48 +563,26 @@ async function main() {
   console.log("Available fields on the first record:");
   console.log("  " + allKeys.join(", "));
 
-  // Position Grade and Discipline exist in the CSV report but are not in the v1 employee
-  // payload under any name tried so far. Anything that looks like them is surfaced here,
-  // including nested objects, so the mapping can be corrected rather than guessed.
-  const hints = allKeys.filter(k =>
-    /grade|discip|level|classif|special|practice|custom|field|service/i.test(k));
-  console.log("Field names that might carry Position Grade or Discipline:");
-  console.log("  " + (hints.length ? hints.join(", ") : "none"));
-
-  for (const k of hints) {
-    const v = rawEmployees[0].raw[k];
-    if (v && typeof v === "object") {
-      console.log(`  ${k} is an object with keys: ${Object.keys(v).join(", ")}`);
-    }
-  }
-
-  const gradeCount = employeesPreview(rawEmployees, FIELDS.positionGrade);
-  const discCount = employeesPreview(rawEmployees, FIELDS.discipline);
-  console.log(`Position Grade populated on ${gradeCount} of ${rawEmployees.length} records.`);
-  console.log(`Discipline populated on ${discCount} of ${rawEmployees.length} records.`);
-  if (gradeCount === 0 || discCount === 0) {
-    console.log("  One or both are empty, so those charts will read Not recorded.");
-    console.log("  Send the two field lists above to Claude and the mapping can be fixed.");
-  }
-
   const employees = rawEmployees.map(normalise);
 
   // Discipline lives in a custom field, which the employee payload does not carry, so it
   // is fetched separately. Non-fatal: if it fails the rest of the dashboard still builds.
-  console.log("");
-  console.log("Custom fields:");
-  try {
-    await applyCustomFields(accessToken, orgAu, "AU", employees.filter(e => e.entity === "AU"));
-    await applyCustomFields(accessToken, orgUk, "UK", employees.filter(e => e.entity === "UK"));
-  } catch (err) {
-    console.warn(`  Custom field fetch failed: ${err.message}. Discipline will be blank.`);
+  if (USE_CUSTOM_FIELDS) {
+    console.log("");
+    console.log("Custom fields:");
+    try {
+      await applyCustomFields(accessToken, orgAu, "AU", employees.filter(e => e.entity === "AU"));
+      await applyCustomFields(accessToken, orgUk, "UK", employees.filter(e => e.entity === "UK"));
+    } catch (err) {
+      console.warn(`  Custom field fetch failed: ${err.message}.`);
+    }
+    console.log("");
+  } else {
+    console.log("");
+    console.log("Custom fields: skipped. Position grade and discipline are derived from " +
+      "the job title instead. See the note above USE_CUSTOM_FIELDS in this file.");
+    console.log("");
   }
-
-  const withDiscipline = employees.filter(e => String(e.discipline || "").trim()).length;
-  const withGrade = employees.filter(e => String(e.positionGrade || "").trim()).length;
-  console.log(`  discipline set on ${withDiscipline} of ${employees.length} records`);
-  console.log(`  position grade set on ${withGrade} of ${employees.length} records`);
-  console.log("");
 
   const unmappedFields = Object.entries(FIELDS)
     .filter(([key]) => employees.every(e => e[key] === "" || e[key] === 0))

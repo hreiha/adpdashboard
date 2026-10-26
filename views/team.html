@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>ADP Dashboard</title>
+<title>ADP Dashboard &ndash; Bids &amp; IT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -36,10 +36,10 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .band { background: var(--blue); color: #fff; padding: 28px 24px 24px; }
+  .band { background: var(--orange); color: #fff; padding: 28px 24px 24px; }
   .band-inner, .sheet { max-width: 1080px; margin: 0 auto; }
   .band h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.015em; }
-  .band .meta { margin-top: 6px; font-size: 13px; color: #C9C9FF; }
+  .band .meta { margin-top: 6px; font-size: 14px; font-weight: 500; color: #FFF1E9; }
 
   .sheet { padding: 0 24px 64px; }
   section { margin-top: 36px; }
@@ -341,7 +341,7 @@
 
 <div class="band">
   <div class="band-inner">
-    <h1>ADP Dashboard</h1>
+    <h1>ADP Dashboard &ndash; Bids &amp; IT</h1>
     <div class="meta" id="meta">Loading</div>
   </div>
 </div>
@@ -384,7 +384,9 @@
   "use strict";
 
   var DAY = 24 * 60 * 60 * 1000;
-  var NOT_RECORDED = "Not recorded";
+  // Must match NOT_RECORDED in scripts/team-metrics.mjs, or this row sorts by count
+  // instead of being pushed to the end of every breakdown.
+  var NOT_RECORDED = "Unknown";
 
   var data = null;
   var state = { costCentres: [], genders: [], asOf: null };
@@ -476,7 +478,7 @@
   // ---------------------------------------------------------------- breakdown
 
   /**
-   * Counts by one field, largest first, with "Not recorded" and "Other" pushed to the
+   * Counts by one field, largest first, with "Unknown" and "Other" pushed to the
    * bottom so they never lead a chart.
    */
   function breakdown(pool, field) {

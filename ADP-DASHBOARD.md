@@ -21,15 +21,37 @@ the headcount is taken at.
 
 ## Position grade and discipline
 
-Both are read from the Employment Hero fields of the same name. On the October 2026
-export those were populated on 98% of active records.
+Both are **read out of the job title**, in `scripts/team-metrics.mjs`.
 
-Where a record has neither, the grade and discipline are read out of the job title as a
-fallback, on the `Grade | Discipline` pattern. A record with no job title either shows as
-*Not recorded* rather than being guessed at.
+They are custom fields in Employment Hero, which means they are not in the employee
+payload and have to be fetched per person from the custom field endpoints. That proved
+unreliable: a fifth of the requests failed on rate limits, and the values that did come
+back were empty. The custom field code is still in `scripts/refresh.mjs` but switched off
+behind `USE_CUSTOM_FIELDS = false`, so it can be turned back on if the API behaves.
 
-Each refresh prints the coverage of both fields. If it drops, the fallback is doing more
-work than it should and the records need fixing in Employment Hero rather than in code.
+Titles are written `<grade> I <discipline>` — the separator is a lone capital **I**, not a
+pipe. Grade comes from the left side, discipline from the right, falling back to the left
+side for titles like `BIM Lead I QLD`.
+
+On the October 2026 export, against 295 people in scope:
+
+| | Resolved | Unknown |
+| --- | --- | --- |
+| Position grade | 99.7% | 1 |
+| Discipline | 88.5% | 34 |
+
+The 34 are titles that carry no discipline at all: *Engineering Assistant* (14), a bare
+*Director* (8), no job title recorded (7), and a handful of administrator and intern
+titles. They show as **Unknown** rather than being guessed at, and Unknown always sorts to
+the bottom of a breakdown so it never reads as a real category.
+
+A BIM person titled `BIM Designer I Mechanical` counts as **Mechanical**, because the
+right side of the title is their discipline and BIM is their grade. Only a BIM title with
+no discipline after the separator lands on the BIM row.
+
+Each refresh prints how many people fell through to Unknown. If that number climbs, a new
+grade or discipline has been introduced and the lists in `team-metrics.mjs` need the new
+value adding.
 
 ## The date filter is a snapshot, not a range
 

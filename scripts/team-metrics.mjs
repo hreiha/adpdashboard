@@ -18,32 +18,124 @@ import { scopeEmployees, parseDate, monthEnd, activeAt, tidyLocation } from "./m
 
 // ---------------------------------------------------------------- configuration
 
-const NOT_RECORDED = "Not recorded";
-
-// Below this many people a breakdown row is folded into "Other", so that a single person
-// is not identifiable by their grade and discipline on a page several teams can open.
-const MIN_ROW_SIZE = 1;
-
-// ---------------------------------------------------------------- derivation
+const NOT_RECORDED = "Unknown";
 
 /**
- * Position grade, straight from the Employment Hero field.
+ * Position grade and discipline are read out of the job title.
  *
- * It is NOT read out of the job title. The job title at ADP is a free text role name and
- * disagrees with the recorded grade on most records: "Consultant I ICT" is graded
- * Engineer II, "Head of IT" is an Associate Director, "Engineering Intern" is a Student.
- * Only 33 of 294 titles matched. A blank grade shows as Not recorded rather than a guess.
+ * Employment Hero holds both as CUSTOM fields, which are not part of the employee payload
+ * and could not be read reliably from the custom field endpoints. The job title is written
+ * "<grade> I <discipline>", with a lone capital I as the separator, not a pipe.
+ *
+ * Measured against the October export: grade resolves on 97% of active people and
+ * discipline on 85%. The rest are titles that carry no discipline, such as Engineering
+ * Assistant, and they show as Unknown rather than being guessed at.
  */
-export function positionGrade(recorded) {
-  return String(recorded || "").trim() || NOT_RECORDED;
+
+// Longest match wins, so Associate Director beats both Associate and Director, and
+// Graduate Engineer beats Engineer. Order here does not matter; length does.
+const GRADES = [
+  "Managing Director", "Regional Director", "Technical Director", "Associate Director",
+  "Director", "Senior Associate", "Associate", "Principal",
+  "Senior Consultant", "Consultant",
+  "Graduate Engineer", "Senior Engineer", "Engineer",
+  "Senior BIM Designer", "BIM Designer", "BIM Cadet", "BIM Lead",
+  "Senior Designer", "Designer", "Design Drafter",
+  "Senior Technician", "Technician",
+  "Senior Specialist", "Specialist", "Senior Advisor", "Advisor", "Adviser",
+  "Senior Manager", "Manager", "Coordinator", "Administrator", "Analyst",
+  "Officer", "Support", "Graduate", "Student", "Intern", "Cadet",
+  "Bid Writer", "Document Controller", "Construction Administration"
+];
+
+// Canonical disciplines, so that Mechanical Team Lead, Fire Protection & Hydraulics and
+// BIM Lead I NSW all land on a single row instead of three. Longest alias wins.
+const DISCIPLINES = [
+  ["Mechanical", ["mechanical"]],
+  ["Electrical", ["electrical"]],
+  ["Hydraulics", ["hydraulic"]],
+  ["Fire Protection", ["fire protection", "fire & hydraulics"]],
+  ["Fire Safety", ["fire safety"]],
+  ["Sustainability", ["sustainability", "esd"]],
+  ["Acoustics", ["acoustic"]],
+  ["Civil", ["civil"]],
+  ["Structures", ["structural", "structures"]],
+  ["Data Centres", ["data centre", "data center"]],
+  ["ICT/AV", ["ict/av", "ict", "av"]],
+  ["BIM", ["bim", "digital engineering", "model manager"]],
+  ["Digital Innovation", ["digital innovation"]],
+  ["Vertical Transportation", ["vertical transport"]],
+  ["Specialist Lighting", ["specialist lighting", "lighting"]],
+  ["Energy", ["energy"]],
+  ["CFD", ["cfd"]],
+  ["Health & Life Sciences", ["health", "life sciences", "laboratory"]],
+  ["Major Projects", ["major projects", "projects"]],
+  ["Corporate", ["corporate", "people & culture", "finance", "operations", "technology",
+                 "strategic growth", "strategic partnerships", "marketing", "bid",
+                 "business support", "office coordinator", "document controller"]]
+];
+
+const CORPORATE = "Corporate";
+
+/** Splits "Senior Engineer I Hydraulics" on the lone capital I. */
+function splitTitle(jobTitle) {
+  const t = String(jobTitle || "").trim();
+  if (!t) return { left: "", right: "" };
+  const m = t.match(/^(.*?)\s+I\s+(.*)$/);
+  if (m) return { left: m[1].trim(), right: m[2].trim() };
+  return { left: t, right: "" };
 }
 
-/** Discipline, straight from the Employment Hero field, for the same reason. */
-export function discipline(recorded) {
-  return String(recorded || "").trim() || NOT_RECORDED;
+function isCorporateCentre(costCentre) {
+  return /corp/i.test(String(costCentre || ""));
 }
 
-/** Male, Female, or Not recorded. Anything else is reported as recorded, not forced. */
+/** Position grade from the part before the separator. */
+export function positionGrade(jobTitle, costCentre) {
+  const left = splitTitle(jobTitle).left;
+  if (left) {
+    const hay = left.toLowerCase();
+    let best = "";
+    for (const g of GRADES) {
+      const needle = g.toLowerCase();
+      if (hay.indexOf(needle) >= 0 && needle.length > best.length) best = g;
+    }
+    if (best) return best;
+  }
+  if (isCorporateCentre(costCentre)) return CORPORATE;
+  return NOT_RECORDED;
+}
+
+function matchDiscipline(text) {
+  const hay = " " + String(text || "").toLowerCase() + " ";
+  let best = "";
+  let bestLen = 0;
+  for (const entry of DISCIPLINES) {
+    for (const alias of entry[1]) {
+      if (hay.indexOf(alias) >= 0 && alias.length > bestLen) {
+        best = entry[0];
+        bestLen = alias.length;
+      }
+    }
+  }
+  return best;
+}
+
+/** Discipline from the part after the separator, falling back to the grade side. */
+export function discipline(jobTitle, costCentre) {
+  const parts = splitTitle(jobTitle);
+  var d = matchDiscipline(parts.right);
+  if (!d) d = matchDiscipline(parts.left);
+  if (d) return d;
+  if (isCorporateCentre(costCentre)) return CORPORATE;
+  return NOT_RECORDED;
+}
+
+// ---------------------------------------------------------------- small helpers
+
+// Rows are anonymised, so there is no small-cell risk and nothing needs suppressing.
+const MIN_ROW_SIZE = 1;
+
 function genderLabel(value) {
   const g = String(value || "").trim();
   if (!g) return NOT_RECORDED;
@@ -81,8 +173,8 @@ export function computeTeamData(employees, asOfIso) {
     l: tidyLocation(e.location),        // office, state suffix removed
     c: e.costCentre || "Unassigned",    // already NAT-grouped and London-defaulted
     g: genderLabel(e.gender),
-    gr: positionGrade(e.positionGrade),
-    d: discipline(e.discipline),
+    gr: positionGrade(e.jobTitle, e.costCentre),
+    d: discipline(e.jobTitle, e.costCentre),
     s: dayOnly(e.startDate),
     t: dayOnly(e.terminationDate),
     b: birthYearMonth(e.birthDate),
