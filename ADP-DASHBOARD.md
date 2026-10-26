@@ -33,25 +33,56 @@ Titles are written `<grade> I <discipline>` — the separator is a lone capital 
 pipe. Grade comes from the left side, discipline from the right, falling back to the left
 side for titles like `BIM Lead I QLD`.
 
+Where the title carries no discipline, the cost centre is used, but only for centres that
+are a single discipline: `NAT-ESD` is entirely the Sustainability team and `NAT-DIG` is
+entirely Digital Innovation. `NAT-SPL` is deliberately not used, because it is the
+Specialist Disciplines team and holds ICT, Fire Safety, Acoustics, Vertical
+Transportation, Lighting and CFD, so it says nothing about an individual.
+
 On the October 2026 export, against 295 people in scope:
 
 | | Resolved | Unknown |
 | --- | --- | --- |
 | Position grade | 99.7% | 1 |
-| Discipline | 88.5% | 34 |
+| Discipline | 95.9% | 12 |
 
-The 34 are titles that carry no discipline at all: *Engineering Assistant* (14), a bare
-*Director* (8), no job title recorded (7), and a handful of administrator and intern
-titles. They show as **Unknown** rather than being guessed at, and Unknown always sorts to
-the bottom of a breakdown so it never reads as a real category.
+The 12 are *Engineering Assistant* (10, in offices with no discipline in the cost centre),
+*Engineering Intern* (2) and records with no job title at all. They show as **Unknown**
+rather than being guessed at, and Unknown always sorts to the bottom of a breakdown so it
+never reads as a real category.
+
+### The four non-engineering disciplines
+
+| Discipline | What is in it |
+| --- | --- |
+| **Corporate** | Finance, marketing and communications, IT, people & culture, talent, L&D |
+| **Bids** | Bid writers, bid managers, bids support |
+| **Business Support** | Business support, office coordinators, executive assistant, document controller, project administrators and coordinators, construction administration |
+| **Leadership** | Titles recording a region, sector or function instead of a discipline: a bare *Director*, the state Regional Leads, *Founding Director*, *Strategic Growth*, *Strategic Partnerships*, *Operations* |
+
+### Two judgement calls worth knowing about
 
 A BIM person titled `BIM Designer I Mechanical` counts as **Mechanical**, because the
 right side of the title is their discipline and BIM is their grade. Only a BIM title with
-no discipline after the separator lands on the BIM row.
+no discipline after the separator lands on the BIM row, which is why BIM shows 5 while the
+BIM grades total 31.
+
+The eight people whose title is just `Director`, plus the four Regional Leads, land in
+**Leadership**. Their titles genuinely record no discipline. If they should sit with their
+engineering teams instead, that needs a per-person mapping, because nothing in the data
+says which team.
+
+### Keeping it current
 
 Each refresh prints how many people fell through to Unknown. If that number climbs, a new
 grade or discipline has been introduced and the lists in `team-metrics.mjs` need the new
 value adding.
+
+Aliases are matched at word boundaries, and an alias of four characters or fewer has to be
+a whole word. This matters: `av` matches `ICT/AV` but not *Aviation*, and `it` matches
+*Head of IT* without matching every other word. Longer aliases keep a loose tail on
+purpose, so `hydraulic` matches Hydraulics and `vertical transport` matches Vertical
+Transportation without spelling out every plural.
 
 ## The date filter is a snapshot, not a range
 

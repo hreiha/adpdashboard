@@ -49,14 +49,16 @@ const GRADES = [
 ];
 
 // Canonical disciplines, so that Mechanical Team Lead, Fire Protection & Hydraulics and
-// BIM Lead I NSW all land on a single row instead of three. Longest alias wins.
+// BIM Lead I NSW all land on a single row instead of three. Longest alias wins, which is
+// why "fire protection" beats "fire" and "project administrator" beats "projects".
 const DISCIPLINES = [
+  // ---- engineering disciplines
   ["Mechanical", ["mechanical"]],
-  ["Electrical", ["electrical"]],
+  ["Electrical", ["electrical", "asp3", "asp 3"]],
   ["Hydraulics", ["hydraulic"]],
   ["Fire Protection", ["fire protection", "fire & hydraulics"]],
   ["Fire Safety", ["fire safety"]],
-  ["Sustainability", ["sustainability", "esd"]],
+  ["Sustainability", ["sustainability", "esd", "esg"]],
   ["Acoustics", ["acoustic"]],
   ["Civil", ["civil"]],
   ["Structures", ["structural", "structures"]],
@@ -68,18 +70,70 @@ const DISCIPLINES = [
   ["Specialist Lighting", ["specialist lighting", "lighting"]],
   ["Energy", ["energy"]],
   ["CFD", ["cfd"]],
-  ["Health & Life Sciences", ["health", "life sciences", "laboratory"]],
+  ["Health & Life Sciences", ["health", "healthcare", "life sciences", "laboratory"]],
   ["Major Projects", ["major projects", "projects"]],
-  ["Corporate", ["corporate", "people & culture", "finance", "operations", "technology",
-                 "strategic growth", "strategic partnerships", "marketing", "bid",
-                 "business support", "office coordinator", "document controller"]]
+
+  // ---- non-engineering. Corporate is deliberately narrow: finance, marketing, IT and
+  // people & culture only. Everything else that used to land there now has its own row.
+  ["Corporate", ["corporate",
+                 // finance
+                 "finance", "accountant", "accounts", "payroll",
+                 // marketing and communications
+                 "marketing", "communications",
+                 // IT
+                 "head of it", "it support", "it manager", "information technology",
+                 "technology", "it",
+                 // people and culture, talent, L&D
+                 "people & culture", "people and culture", "talent",
+                 "learning & development", "learning and development"]],
+
+  ["Bids", ["bid", "bids", "bid writer", "bid manager", "tender", "submissions"]],
+
+  ["Business Support", ["business support", "office coordinator", "office manager",
+                        "executive assistant", "document controller", "receptionist",
+                        "administration assistant", "project administrator",
+                        "project coordinator", "construction administration",
+                        "contracts coordinator"]],
+
+  // Leadership roles whose title records a region, sector or function rather than a
+  // discipline: a bare Director, a Regional Lead, a Founding Director.
+  ["Leadership", ["director", "founding director", "regional director",
+                  "managing director", "regional lead", "retail lead",
+                  "strategic growth", "strategic partnerships", "operations",
+                  "head of people", "chief"]]
+];
+
+/**
+ * Cost centres that are a single discipline, used when the title carries none. Every title
+ * inside NAT-ESD is Sustainability or Energy, and every title inside NAT-DIG is Digital
+ * Innovation, so an Engineering Assistant in either is safely placed.
+ *
+ * NAT-SPL is deliberately absent: it is the Specialist Disciplines team and holds ICT,
+ * Fire Safety, Acoustics, Vertical Transportation, Lighting and CFD, so it says nothing
+ * about an individual.
+ */
+const CENTRE_DISCIPLINE = [
+  ["nat-esd", "Sustainability"],
+  ["nat-dig", "Digital Innovation"],
+  ["nat-corp", "Corporate"]
 ];
 
 const CORPORATE = "Corporate";
 
+/**
+ * Some titles carry trailing zero width spaces from a paste into Employment Hero, which
+ * would otherwise defeat both the separator match and the alias match.
+ */
+function cleanTitle(jobTitle) {
+  return String(jobTitle || "")
+    .replace(/[​-‍﻿ ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** Splits "Senior Engineer I Hydraulics" on the lone capital I. */
 function splitTitle(jobTitle) {
-  const t = String(jobTitle || "").trim();
+  const t = cleanTitle(jobTitle);
   if (!t) return { left: "", right: "" };
   const m = t.match(/^(.*?)\s+I\s+(.*)$/);
   if (m) return { left: m[1].trim(), right: m[2].trim() };
@@ -88,6 +142,15 @@ function splitTitle(jobTitle) {
 
 function isCorporateCentre(costCentre) {
   return /corp/i.test(String(costCentre || ""));
+}
+
+/** Discipline implied by a single discipline cost centre, or "" if it implies none. */
+function centreDiscipline(costCentre) {
+  const c = String(costCentre || "").toLowerCase();
+  for (const entry of CENTRE_DISCIPLINE) {
+    if (c.indexOf(entry[0]) >= 0) return entry[1];
+  }
+  return "";
 }
 
 /** Position grade from the part before the separator. */
@@ -106,28 +169,56 @@ export function positionGrade(jobTitle, costCentre) {
   return NOT_RECORDED;
 }
 
+/**
+ * Every alias has to start at a word boundary, and a short one has to end at one too.
+ *
+ * Plain substring matching is not safe here. "av" appears inside "Aviation", which put an
+ * Aviation Lead in ICT/AV, and "it" appears inside half the words in English. Requiring a
+ * word boundary at the start only would still match "Aviation", so aliases of four
+ * characters or fewer have to be whole words.
+ *
+ * Longer aliases keep the loose tail on purpose, so that "hydraulic" matches Hydraulics,
+ * "acoustic" matches Acoustics and "vertical transport" matches Vertical Transportation
+ * without needing every plural spelled out.
+ */
+const ALIAS_TESTS = DISCIPLINES.map(entry => ({
+  name: entry[0],
+  tests: entry[1].map(alias => {
+    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const tail = alias.length <= 4 ? "([^a-z0-9]|$)" : "";
+    return { length: alias.length, re: new RegExp("(^|[^a-z0-9])" + escaped + tail) };
+  })
+}));
+
 function matchDiscipline(text) {
-  const hay = " " + String(text || "").toLowerCase() + " ";
+  const hay = String(text || "").toLowerCase();
+  if (!hay) return "";
   let best = "";
   let bestLen = 0;
-  for (const entry of DISCIPLINES) {
-    for (const alias of entry[1]) {
-      if (hay.indexOf(alias) >= 0 && alias.length > bestLen) {
-        best = entry[0];
-        bestLen = alias.length;
+  for (const entry of ALIAS_TESTS) {
+    for (const t of entry.tests) {
+      if (t.length > bestLen && t.re.test(hay)) {
+        best = entry.name;
+        bestLen = t.length;
       }
     }
   }
   return best;
 }
 
-/** Discipline from the part after the separator, falling back to the grade side. */
+/**
+ * Discipline, in order of how much the source is trusted:
+ *   1. the part of the title after the separator, which is where it belongs
+ *   2. the part before it, for titles like "BIM Lead I QLD" or a bare "Office Coordinator"
+ *   3. the cost centre, but only for centres that are a single discipline
+ * Anything still unresolved is Unknown rather than guessed at.
+ */
 export function discipline(jobTitle, costCentre) {
   const parts = splitTitle(jobTitle);
   var d = matchDiscipline(parts.right);
   if (!d) d = matchDiscipline(parts.left);
+  if (!d) d = centreDiscipline(costCentre);
   if (d) return d;
-  if (isCorporateCentre(costCentre)) return CORPORATE;
   return NOT_RECORDED;
 }
 
