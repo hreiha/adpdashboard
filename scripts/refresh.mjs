@@ -44,7 +44,12 @@ const CUSTOM_FIELDS = {
   positionGrade: ["position grade", "position level", "grade"]
 };
 
-const CUSTOM_FIELD_CONCURRENCY = 6;
+const CUSTOM_FIELD_CONCURRENCY = 4;
+
+// Custom fields are only needed for people the dashboard can still show. The trend goes
+// back twenty four months, so anyone who left well before that is skipped. On the October
+// run that avoided roughly a third of the requests.
+const CUSTOM_FIELD_MONTHS_BACK = 30;
 
 /**
  * Employment Hero field names, per tenant. Each entry lists the keys to try, in order,
@@ -367,6 +372,25 @@ function loadRecruitment() {
   return parsed;
 }
 
+/**
+ * Reads a custom field value whatever shape it arrives in.
+ *
+ * Employment Hero returns these as ARRAYS, even for a single select: the live response
+ * shows "value":[] for an empty one. An array is an object, so the earlier version read
+ * .name off it, got undefined, and silently discarded every value. Hence the recursion.
+ */
+function readCustomValue(v) {
+  if (v === null || v === undefined) return "";
+  if (Array.isArray(v)) {
+    return v.map(readCustomValue).filter(Boolean).join(", ");
+  }
+  if (typeof v === "object") {
+    return readCustomValue(v.name ?? v.value ?? v.label ?? v.title ?? "");
+  }
+  const s = String(v).trim();
+  return s === "-" ? "" : s;
+}
+
 /** One GET with a retry on 429 and 5xx, so a rate limit does not end the run. */
 async function getJson(accessToken, path, attempt = 0) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -374,9 +398,11 @@ async function getJson(accessToken, path, attempt = 0) {
   });
 
   if (res.status === 429 || res.status >= 500) {
-    if (attempt < 4) {
-      const wait = 400 * Math.pow(2, attempt);
-      await new Promise(r => setTimeout(r, wait));
+    if (attempt < 6) {
+      // Honour Retry-After when the API sends it, otherwise back off exponentially
+      const header = Number(res.headers && res.headers.get && res.headers.get("retry-after"));
+      const wait = header > 0 ? header * 1000 : 500 * Math.pow(2, attempt);
+      await new Promise(r => setTimeout(r, Math.min(wait, 20000)));
       return getJson(accessToken, path, attempt + 1);
     }
   }
@@ -435,26 +461,33 @@ async function applyCustomFields(accessToken, orgId, entity, employees) {
     return;
   }
 
+  // Skip anyone who left long enough ago that no view can reach them
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - CUSTOM_FIELD_MONTHS_BACK);
+  const targets = employees.filter(e => {
+    if (!e.id) return false;
+    const t = e.terminationDate ? new Date(e.terminationDate) : null;
+    return !t || isNaN(t.getTime()) || t >= cutoff;
+  });
+  const skipped = employees.length - targets.length;
+
   let filled = 0;
   let failed = 0;
   let index = 0;
   let shapeLogged = false;
+  const failures = {};
 
   async function worker() {
-    while (index < employees.length) {
-      const e = employees[index++];
-      if (!e.id) continue;
+    while (index < targets.length) {
+      const e = targets[index++];
       const res = await getJson(accessToken, `/organisations/${orgId}/employees/${e.id}/custom_fields`);
-      if (!res.ok) { failed++; continue; }
+      if (!res.ok) {
+        failed++;
+        failures[res.status] = (failures[res.status] || 0) + 1;
+        continue;
+      }
 
       const items = itemsOf(res.json);
-
-      // Printed once, so that if nothing lands the actual response shape is visible
-      // rather than having to be guessed at again.
-      if (!shapeLogged && items.length) {
-        shapeLogged = true;
-        console.log(`  ${entity}: a custom field value looks like ${JSON.stringify(items[0])}`);
-      }
 
       let any = false;
       for (const item of items) {
@@ -464,11 +497,16 @@ async function applyCustomFields(accessToken, orgId, entity, employees) {
             .trim().toLowerCase());
         if (!field) continue;
 
-        // The value sits under one of a few keys depending on the field type
-        let v = item.value ?? item.custom_field_value ?? item.field_value ?? item.text ?? "";
-        if (v && typeof v === "object") v = v.name ?? v.value ?? v.label ?? "";
-        v = String(v || "").trim();
-        if (v && v !== "-") { e[field] = v; any = true; }
+        // Printed once for a field we actually want, so the shape is visible if the
+        // value still does not land. The first item of any kind told us little.
+        if (!shapeLogged) {
+          shapeLogged = true;
+          console.log(`  ${entity}: ${field} arrives as ${JSON.stringify(item)}`);
+        }
+
+        const v = readCustomValue(
+          item.value ?? item.custom_field_value ?? item.field_value ?? item.text);
+        if (v) { e[field] = v; any = true; }
       }
       if (any) filled++;
     }
@@ -478,8 +516,20 @@ async function applyCustomFields(accessToken, orgId, entity, employees) {
   for (let i = 0; i < CUSTOM_FIELD_CONCURRENCY; i++) workers.push(worker());
   await Promise.all(workers);
 
-  console.log(`  ${entity}: custom fields filled on ${filled} of ${employees.length} records` +
-    (failed ? `, ${failed} request(s) failed` : ""));
+  console.log(`  ${entity}: custom fields filled on ${filled} of ${targets.length} records` +
+    (skipped ? `, ${skipped} skipped as long departed` : "") +
+    (failed ? `, ${failed} failed` : ""));
+  if (failed) {
+    console.log("  failures by status: " +
+      Object.entries(failures).map(([k, v]) => `${k} x${v}`).join(", "));
+    if (failures["429"]) {
+      console.log("  429 means rate limited after six retries. Lower " +
+        "CUSTOM_FIELD_CONCURRENCY in scripts/refresh.mjs.");
+    }
+    if (failures["404"]) {
+      console.log("  404 is normal for a record with no custom fields set.");
+    }
+  }
 }
 
 async function main() {
