@@ -1,5 +1,5 @@
 {
-  "generatedUtc": "2026-11-22T00:04:46.403Z",
+  "generatedUtc": "2026-11-23T03:18:04.547Z",
   "periodLabel": "Nov 2026",
   "priorLabel": "Oct 2026",
   "people": {
@@ -17051,6 +17051,6 @@
     "notYetStarted": 14,
     "excludedNoSalary": 302,
     "casualsConverted": 64,
-    "partTimeConverted": 44
+    "partTimeConverted": 45
   }
 }
