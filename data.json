@@ -1,5 +1,5 @@
 {
-  "generatedUtc": "2026-11-23T03:18:04.547Z",
+  "generatedUtc": "2026-11-24T04:35:33.364Z",
   "periodLabel": "Nov 2026",
   "priorLabel": "Oct 2026",
   "people": {
@@ -16735,7 +16735,7 @@
     }
   ],
   "historyQuality": {
-    "recordsWithStartDate": 1091,
+    "recordsWithStartDate": 1092,
     "leaversWithoutStartDate": 18,
     "firstLeaverMonth": "2012-08",
     "impossibleTerminationDates": 0
@@ -17048,7 +17048,7 @@
     "excludedContractors": 0,
     "excludedIncomplete": 0,
     "excludedNoCostCentre": 350,
-    "notYetStarted": 14,
+    "notYetStarted": 15,
     "excludedNoSalary": 302,
     "casualsConverted": 64,
     "partTimeConverted": 45
