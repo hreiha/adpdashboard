@@ -1,5 +1,5 @@
 {
-  "generatedUtc": "2026-11-24T04:35:33.364Z",
+  "generatedUtc": "2026-11-25T03:22:03.254Z",
   "periodLabel": "Nov 2026",
   "priorLabel": "Oct 2026",
   "people": {
@@ -14,8 +14,8 @@
     "leaversMonthPrior": 14,
     "leaversVoluntaryMonth": 4,
     "leaversVoluntaryMonthPrior": 14,
-    "hiresMonth": 6,
-    "hiresMonthPrior": 4,
+    "hiresMonth": 5,
+    "hiresMonthPrior": 5,
     "churnTotal": "37.7",
     "churnTotalPrior": "39.4",
     "churnVoluntary": "28.1",
@@ -7722,8 +7722,8 @@
       "genderNotRecorded": 0,
       "femalePct": "25.0",
       "femalePctPrior": "27.3",
-      "hiresMonth": 2,
-      "hiresMonthPrior": 0,
+      "hiresMonth": 1,
+      "hiresMonthPrior": 1,
       "leaversMonth": 0,
       "leaversMonthPrior": 0,
       "leaversVoluntaryMonth": 0,
@@ -16735,7 +16735,7 @@
     }
   ],
   "historyQuality": {
-    "recordsWithStartDate": 1092,
+    "recordsWithStartDate": 1091,
     "leaversWithoutStartDate": 18,
     "firstLeaverMonth": "2012-08",
     "impossibleTerminationDates": 0
@@ -16749,7 +16749,7 @@
       "female": 75,
       "femalePct": "26.0",
       "leaversMonth": 4,
-      "hiresMonth": 6,
+      "hiresMonth": 5,
       "gpgMean": "0.0",
       "gpgMedian": "0.0"
     },
@@ -17048,7 +17048,7 @@
     "excludedContractors": 0,
     "excludedIncomplete": 0,
     "excludedNoCostCentre": 350,
-    "notYetStarted": 15,
+    "notYetStarted": 14,
     "excludedNoSalary": 302,
     "casualsConverted": 64,
     "partTimeConverted": 45
